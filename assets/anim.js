@@ -532,15 +532,21 @@
   };
 
   /* =============== 04. GPI 지그재그 =============== */
+  /* PI: 화살표가 두 선에 끝까지 닿음 (평가·개선을 끝까지, 슬라이드 p.29)
+     GPI: 선에 닿지 않고 조금씩만 (평가·개선을 일부만, 슬라이드 p.33) */
   AN.gpi = root => {
-    let el, y, n, side, pts;
+    let el, y, n, side, pts, mode;
     const top = [280, 50];
     const L1 = y => 60 + (300 - y) / 250 * 220, L2 = y => 500 - (300 - y) / 250 * 220;
-    setup(root, 'GPI: 평가와 개선이 지그재그로 v*, π* 에서 만나요', {
+    const m0 = root.dataset.mode === 'pi' ? 'pi' : 'gpi';
+    setup(root, m0 === 'pi' ? 'PI: 평가·개선을 매번 “끝까지” 해서 v*, π* 로' : 'GPI: 평가·개선을 “조금씩만” 해도 v*, π* 로', {
       delay: 500, endPause: 3000,
+      extra: `<label>방식 <select class="a-opt" data-k="mode"><option value="pi"${m0 === 'pi' ? ' selected' : ''}>PI (선까지 끝까지)</option><option value="gpi"${m0 === 'gpi' ? ' selected' : ''}>GPI (선에 안 닿게 조금씩)</option></select></label>`,
       reset(ctl) {
+        mode = ctl.opt('mode') || m0;
         const svg = ctl.svg(560, 330);
         arrowDefs(svg, 'gpA', C.orange);
+        arrowDefs(svg, 'gpB', C.sky);
         el = {};
         mk(svg, 'line', { x1: 60, y1: 300, x2: top[0], y2: top[1], stroke: C.char, 'stroke-width': 2 });
         mk(svg, 'line', { x1: 500, y1: 300, x2: top[0], y2: top[1], stroke: C.char, 'stroke-width': 2 });
@@ -553,21 +559,37 @@
         y = 300; n = 0; side = 0; pts = [[280, 300]];
         el.dot.setAttribute('cx', 280); el.dot.setAttribute('cy', 300);
         mk(svg, 'text', { x: 292, y: 296, fill: C.ink, 'font-size': 13 }, 'π₀, V₀');
-        ctl.cap('아무 정책 π₀ 와 가치 V₀ 에서 시작해요.');
+        mk(svg, 'text', { x: 20, y: 24, fill: C.sky, 'font-size': 13 }, '→ 파랑 = 평가');
+        mk(svg, 'text', { x: 20, y: 42, fill: C.sienna, 'font-size': 13 }, '→ 주황 = 개선');
+        ctl.cap(mode === 'pi'
+          ? '<b>PI</b>: 아무 π₀, V₀ 에서 시작. 평가와 개선을 매번 <b>끝까지</b> 해서 화살표가 선에 닿아요 (슬라이드 p.29).'
+          : '<b>GPI</b>: 아무 π₀, V₀ 에서 시작. 평가도 개선도 <b>끝까지 안 하고 조금씩만</b> — 화살표가 선에 닿지 않아요 (슬라이드 p.33).');
       },
       async step(ctl) {
-        const ny = y - (y - top[1]) * 0.28;
-        const nx = side === 0 ? L1(ny) : L2(ny);
         const [x0, y0] = pts[pts.length - 1];
-        const ln = mk(el.path, 'line', { x1: x0, y1: y0, x2: x0, y2: y0, stroke: C.orange, 'stroke-width': 2, 'marker-end': 'url(#gpA)' });
-        ctl.cap(side === 0 ? `<b>평가</b>: 정책은 고정, V 를 v_π 쪽으로 이동 (왼쪽 선으로) — “지금 정책이 얼마나 좋은가?”`
-          : `<b>개선</b>: V 는 고정, π 를 greedy(V) 로 바꿈 (오른쪽 선으로) — “그 가치를 보고 더 좋은 행동으로!”`);
+        let nx, ny;
+        if (mode === 'pi') {
+          ny = y - (y - top[1]) * 0.28;
+          nx = side === 0 ? L1(ny) : L2(ny);
+        } else {
+          ny = y - (y - top[1]) * 0.18;
+          const target = side === 0 ? L1(ny) : L2(ny);
+          nx = x0 + (target - x0) * 0.5;               // 선까지의 절반만 → 선에 닿지 않음
+        }
+        const isEval = side === 0;
+        const ln = mk(el.path, 'line', { x1: x0, y1: y0, x2: x0, y2: y0, stroke: isEval ? C.sky : C.orange, 'stroke-width': 2, 'marker-end': `url(#${isEval ? 'gpB' : 'gpA'})` });
+        if (mode === 'pi') ctl.cap(isEval ? `<b>평가 (끝까지)</b>: 정책은 고정, V 를 <b>정확히</b> v_π 로 (왼쪽 선에 닿음) — 반복적 정책 평가를 수렴할 때까지`
+          : `<b>개선 (끝까지)</b>: V 는 고정, π 를 <b>완전한</b> greedy(V) 로 (오른쪽 선에 닿음) — 그리디 정책 개선`);
+        else ctl.cap(isEval ? `<b>평가 (조금만)</b>: V 를 v_π <b>쪽으로 조금만</b> 이동 — 예: 정책 평가 1 sweep, MC 에피소드 1개, TD 한 스텝`
+          : `<b>개선 (조금만)</b>: π 를 <b>조금 더 나은</b> 정책으로 — 꼭 완전한 greedy 가 아니어도 OK (예: ε-greedy)`);
         await tween(650, t => { const x = lerp(x0, nx, t), yy = lerp(y0, ny, t); ln.setAttribute('x2', x); ln.setAttribute('y2', yy); el.dot.setAttribute('cx', x); el.dot.setAttribute('cy', yy); }, ctl);
         pts.push([nx, ny]); y = ny; side = 1 - side; n++;
         if (y - top[1] < 3) {
           await tween(400, t => { el.dot.setAttribute('cx', lerp(nx, top[0], t)); el.dot.setAttribute('cy', lerp(ny, top[1], t)); }, ctl);
           el.star.style.fill = C.orange;
-          ctl.cap('✔ 서로 밀고 당기다 두 조건(v = v_π, π = greedy(v))을 <b>동시에</b> 만족하는 점에서 멈춰요 → 그게 바로 v*, π*. PI·VI·MC 제어·SARSA 모두 이 틀(GPI)!');
+          ctl.cap(mode === 'pi'
+            ? `✔ <b>PI</b>: 매번 끝까지 하니까 적은 반복(${n}번 이동)으로 v*, π* 에 도착. 대신 평가 한 번 한 번이 비싸요.`
+            : `✔ <b>GPI</b>: 끝까지 안 해도 결국 두 조건(v = v_π, π = greedy(v))을 <b>동시에</b> 만족하는 v*, π* 로 (${n}번 이동). 가치 이터레이션·MC 제어·SARSA 가 다 이 방식!`);
           return false;
         }
         return true;
