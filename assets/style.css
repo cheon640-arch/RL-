@@ -518,3 +518,16 @@ mark.hl.circ { background: transparent; padding: 0; }
   .note-dock { flex-wrap: wrap; justify-content: center; }
 }
 @media print { .sticky .st-bar button { display: none; } }
+
+/* 단원 끝 퀴즈 바로가기 */
+.quiz-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-top: 22px; padding: 18px 20px; border-radius: 12px;
+  background: #fff; border: 1.5px solid var(--charcoal); box-shadow: var(--shadow-card);
+}
+.quiz-cta .qc-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 320px; }
+.quiz-cta .qc-text .hand { font-size: 22px; line-height: 1.1; }
+.quiz-cta .qc-text b { font-family: var(--font-display); font-size: 22px; color: var(--cocoa); }
+.quiz-cta .qc-text span:last-child { font-size: 15px; color: var(--muted); }
+.quiz-cta .qc-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.quiz-cta .qc-btns .pill:first-child { border-color: var(--orange); color: var(--sienna); font-size: 16px; padding: 10px 22px; }

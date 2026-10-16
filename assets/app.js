@@ -38,7 +38,8 @@
     const tabs = CHAPTERS.map(c =>
       `<a href="${c.file}" class="${c.id === current ? 'active' : ''}">${c.id}. ${c.title}</a>`).join('') +
       `<a href="summary.html" class="extra ${current === 'sum' ? 'active' : ''}">한눈에 요약</a>` +
-      `<a href="compare.html" class="extra ${current === 'cmp' ? 'active' : ''}">한눈에 비교</a>`;
+      `<a href="compare.html" class="extra ${current === 'cmp' ? 'active' : ''}">한눈에 비교</a>` +
+      `<a href="quiz.html" class="extra ${current === 'quiz' ? 'active' : ''}">퀴즈</a>`;
     return `<header class="site-header">
       <a class="brand" href="index.html" aria-label="홈">${HAND}<span>rl notebook</span></a>
       <nav class="chapter-tabs">${tabs}</nav>
@@ -129,9 +130,9 @@
       (next ? `<a class="pill" href="${next.file}">${next.id}. ${next.title} →</a>` : `<a class="pill" href="index.html">홈으로 →</a>`);
   }
 
-  function renderMath() {
+  function renderMath(el) {
     if (window.renderMathInElement) {
-      renderMathInElement(document.body, {
+      renderMathInElement(el || document.body, {
         delimiters: [
           { left: '\\[', right: '\\]', display: true },
           { left: '\\(', right: '\\)', display: false },
@@ -153,7 +154,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const chId = document.body.dataset.ch || '';
-    document.body.insertAdjacentHTML('afterbegin', header(chId));
+    document.body.insertAdjacentHTML('afterbegin', header(chId || document.body.dataset.page || ''));
     document.body.insertAdjacentHTML('beforeend', footer());
     placeStickers(document);
     if (chId) { buildToc(chId); if (CHAPTERS.some(c => c.id === chId)) chapterNav(chId); }
