@@ -252,20 +252,38 @@ pi = arbitrary_deterministic_policy()
   <h2>Policy Improvement Theorem <span class="ko">정책 개선 정리</span></h2>
   <span class="slide-ref">p.30</span>
   <div class="label thm"><span class="tag">theorem</span>
-    <p>\(\pi\)와 \(\pi'\)가 임의의 결정적 정책 쌍일 때,</p>
+    <p>\(\pi\)와 \(\pi'\)가 임의의 정책 쌍일 때 (슬라이드 필기: “deterministic” 삭제 → 확률적 정책에도 성립),</p>
     <div class="eq">\[q_\pi(s, \pi'(s)) \ge v_\pi(s) = \sum_a \pi(a\mid s)\, q_\pi(s,a)\quad \forall s \in \S \;\;\Longrightarrow\;\; v_{\pi'}(s) \ge v_\pi(s)\quad \forall s \in \S\]</div>
+    <p style="font-size:15px">(π′ 가 확률적이면 \(q_\pi(s,\pi'(s))\) 는 \(\E_{\pi'}[q_\pi(s, A_t)\mid S_t = s] = \sum_a \pi'(a\mid s) q_\pi(s,a)\) 라는 뜻)</p>
   </div>
   <div class="label proof"><span class="tag">proof</span>
+    <p>임의의 \(s \in \S\) 에 대해 (슬라이드 p.30 과 같은 순서)</p>
     <div class="eq">\[\begin{aligned}
-    v_\pi(s) &\le q_\pi(s, \pi'(s)) = \E_{\pi'}[q_\pi(s, A_t) \mid S_t = s] \\
-    &= \E_{\pi'}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s] \\
-    &\le \E_{\pi'}[R_{t+1} + \gamma q_\pi(S_{t+1}, \pi'(S_{t+1})) \mid S_t = s] \\
-    &= \E_{\pi'}[R_{t+1} + \gamma\, \E_{\pi'}[R_{t+2} + \gamma v_\pi(S_{t+2}) \mid S_{t+1}, A_{t+1}] \mid S_t = s] \\
-    &= \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s] \\
-    &\le \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s] = v_{\pi'}(s). \quad\blacksquare
+    v_\pi(s) &= \E_\pi[q_\pi(s, A_t) \mid S_t = s] && \text{①} \\
+    &\le \E_{\pi'}[q_\pi(s, A_t) \mid S_t = s] && \text{②} \\
+    &= \E_{\pi'}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s] && \text{③} \\
+    &\le \E_{\pi'}\big[R_{t+1} + \gamma\, \E_{\pi'}[q_\pi(S_{t+1}, A_{t+1}) \mid S_{t+1}] \,\big|\, S_t = s\big] && \text{④} \\
+    &= \E_{\pi'}\big[R_{t+1} + \gamma\, \E_{\pi'}\big[\E_\pi[R_{t+2} + \gamma v_\pi(S_{t+2}) \mid S_{t+1}, A_{t+1}] \,\big|\, S_{t+1}\big] \,\big|\, S_t = s\big] && \text{⑤} \\
+    &= \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s] && \text{⑥} \\
+    &\le \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s] && \text{⑦} \\
+    &= v_{\pi'}(s). \quad\blacksquare && \text{⑧}
     \end{aligned}\]</div>
   </div>
-  <div class="note"><span class="hand">한 줄 요약</span>“한 스텝만 \(\pi'\)를 따르고 나머진 \(\pi\)를 따라도 손해가 없다면, 계속 \(\pi'\)를 따르면 더 좋다.”</div>
+  <h3>한 줄씩 읽기</h3>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>줄</th><th>무엇을 했나</th></tr></thead>
+    <tbody>
+      <tr><td>①</td><td><b>정의</b>: \(v_\pi(s) = \sum_a \pi(a\mid s)\,q_\pi(s,a)\) 를 기댓값으로 쓴 것</td></tr>
+      <tr><td>②</td><td><b>가정</b> 사용: 첫 행동을 π 대신 <b>π′ 로 골라도</b> 손해가 없다 (\(q_\pi(s,\pi'(s)) \ge v_\pi(s)\))</td></tr>
+      <tr><td>③</td><td><b>\(q_\pi\) 정의</b>: 한 스텝 보상 \(R_{t+1}\) + 그 뒤로 π 를 따른 가치 \(\gamma v_\pi(S_{t+1})\)</td></tr>
+      <tr><td>④</td><td>다음 상태 \(S_{t+1}\) 에서 <b>가정을 한 번 더</b>: \(v_\pi(S_{t+1}) \le \E_{\pi'}[q_\pi(S_{t+1}, A_{t+1}) \mid S_{t+1}]\)</td></tr>
+      <tr><td>⑤</td><td>그 \(q_\pi\) 를 <b>정의대로 풀기</b>. 행동 \(A_{t+1}\) 이후는 π 를 따르는 값이라 안쪽은 \(\E_\pi\)</td></tr>
+      <tr><td>⑥</td><td>겹친 기댓값을 하나로 합치기 (전기댓값 법칙) → <b>두 스텝을 π′ 로</b> 행동한 셈</td></tr>
+      <tr><td>⑦</td><td>②~⑥ 을 <b>무한히 반복</b> → 모든 행동을 π′ 로</td></tr>
+      <tr><td>⑧</td><td>“처음부터 끝까지 π′ 를 따른 기대 리턴” = \(v_{\pi'}(s)\) 의 정의</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><span class="hand">한 줄 요약</span>π ≤ “1스텝만 π′” ≤ “2스텝 π′” ≤ ⋯ ≤ “전부 π′” = π′. 한 스텝만 \(\pi'\)를 따르고 나머진 \(\pi\)를 따라도 손해가 없다면, 계속 \(\pi'\)를 따르면 더 좋다.</div>
 </section>
 
 <section class="card" id="pi-converge" data-toc="PI가 최적에 수렴하는 이유">

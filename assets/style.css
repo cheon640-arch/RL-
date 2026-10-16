@@ -623,3 +623,20 @@ a.ch-card .rev-count { position: absolute; right: 18px; bottom: 18px; font-famil
   .chapter-tabs::-webkit-scrollbar { display: none; }
   .brand span { display: none; }
 }
+
+/* ===== 휴대폰: 페이지가 옆으로 밀리지 않게 + 도구 막대 한 줄 ===== */
+@media (max-width: 640px) {
+  body { overflow-x: clip; }
+  p .katex, li .katex, td .katex, .note .katex, .label .katex {
+    display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; vertical-align: middle;
+  }
+  .note-dock {
+    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    left: 8px; right: 8px; bottom: 8px; padding: 5px 6px; gap: 6px; border-radius: 22px;
+    scrollbar-width: none;
+  }
+  .note-dock::-webkit-scrollbar { display: none; }
+  .note-dock > * { flex: none; }
+  .note-dock .dock-colors .dot { width: 18px; height: 18px; }
+  .note-dock .dock-hint { position: fixed; left: 8px; right: 8px; bottom: 62px; white-space: normal; }
+}
