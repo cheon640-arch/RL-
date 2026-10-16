@@ -73,14 +73,15 @@
 <section class="card" id="dp-v" data-toc="DP로 가치함수 평가">
   <h2>Evaluate Value Function using DP</h2>
   <span class="slide-ref">p.5</span>
-  <p>\(k\)-스텝까지만 본 기대 리턴을 \(v_k\)라고 하면:</p>
-  <div class="eq">\[v_k(s) = \E_\pi\Big[\sum_{i=0}^{k-1} \gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
-  <div class="eq">\[v_k(s) = \sum_a \sum_{s'} \pi(a\mid s)\, p(s'\mid s,a)\big[r(s,a,s') + \gamma v_{k-1}(s')\big], \qquad \lim_{k\to\infty} v_k(s) = v_\pi(s)\]</div>
-  <p>\(v_k\)는 DP의 세 성질을 만족해요:</p>
+  <p>\(k\)-스텝까지만 본 기대 리턴을 \(V_k\)라고 하면:</p>
+  <div class="eq">\[V_k(s) = \E_\pi\Big[\sum_{i=0}^{k-1} \gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
+  <div class="eq">\[V_k(s) = \sum_a \sum_{s'} \pi(a\mid s)\, p(s'\mid s,a)\big[r(s,a,s') + \gamma V_{k-1}(s')\big], \qquad \lim_{k\to\infty} V_k(s) = v_\pi(s)\]</div>
+  <p style="font-size:15px;color:var(--muted)">표기: 반복하면서 계산 중인 추정치는 <b>대문자</b> \(V_k\), 진짜 가치함수는 <b>소문자</b> \(v_\pi\) (슬라이드와 같은 표기).</p>
+  <p>\(V_k\)는 DP의 세 성질을 만족해요:</p>
   <ul>
     <li><b>Substructure</b>: \(k\)-스텝 기대 리턴 = 보상 + 다음 상태에서의 \((k-1)\)-스텝 기대 리턴</li>
-    <li><b>Table structure</b>: \(v_{k-1}(s')\)는 한 번 계산되면 \(s'\)로 전이할 수 있는 모든 상태 \(s\)가 재사용</li>
-    <li><b>Bottom-up</b>: \(v_0 \equiv 0\)에서 시작해 \(v_1, v_2, \dots\)를 계산. 각 sweep은 \((k-1)\)-horizon 테이블로 \(k\)-horizon 문제를 정확히 품</li>
+    <li><b>Table structure</b>: \(V_{k-1}(s')\)는 한 번 계산되면 \(s'\)로 전이할 수 있는 모든 상태 \(s\)가 재사용</li>
+    <li><b>Bottom-up</b>: \(V_0 \equiv 0\)에서 시작해 \(V_1, V_2, \dots\)를 계산. 각 sweep은 \((k-1)\)-horizon 테이블로 \(k\)-horizon 문제를 정확히 품</li>
   </ul>
 </section>
 
@@ -311,14 +312,14 @@ pi = arbitrary_deterministic_policy()
   <h2>Find Optimal Value Function using DP</h2>
   <span class="slide-ref">p.36</span>
   <p>\(k\)-스텝 최적 기대 리턴:</p>
-  <div class="eq">\[v_k(s) = \max_\pi \E_\pi\Big[\sum_{i=0}^{k-1}\gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
-  <div class="eq">\[v_k(s) = \max_a \sum_{s'} p(s'\mid s,a)\big[r(s,a,s') + \gamma v_{k-1}(s')\big], \qquad \lim_{k\to\infty} v_k(s) = v_*(s)\]</div>
+  <div class="eq">\[V_k(s) = \max_\pi \E_\pi\Big[\sum_{i=0}^{k-1}\gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
+  <div class="eq">\[V_k(s) = \max_a \sum_{s'} p(s'\mid s,a)\big[r(s,a,s') + \gamma V_{k-1}(s')\big], \qquad \lim_{k\to\infty} V_k(s) = v_*(s)\]</div>
   <ul>
     <li><b>Substructure</b>: 최적 \(k\)-스텝 리턴 = 가장 좋은 첫 행동의 보상 + 다음 상태의 최적 \((k-1)\)-스텝 리턴 (<b>최적성의 원리</b>, principle of optimality)</li>
-    <li><b>Table structure</b>: \(v_{k-1}(s')\)는 한 번 계산되어 여러 \(s\)가 재사용</li>
-    <li><b>Bottom-up</b>: \(v_0 \equiv 0\)에서 \(v_1, v_2, \dots\)</li>
+    <li><b>Table structure</b>: \(V_{k-1}(s')\)는 한 번 계산되어 여러 \(s\)가 재사용</li>
+    <li><b>Bottom-up</b>: \(V_0 \equiv 0\)에서 \(V_1, V_2, \dots\)</li>
   </ul>
-  <div class="note"><span class="hand">수렴 근거</span>3장에서 증명한 대로 벨만 최적 연산자 \(T\)는 \(\gamma\)-축약사상 (p.37 증명 동일) → 바나흐 고정점 정리 (p.38) → 벨만 최적 방정식은 고정점 \(v_*\)를 정의하고 \(v_k \to v_*\).</div>
+  <div class="note"><span class="hand">수렴 근거</span>3장에서 증명한 대로 벨만 최적 연산자 \(T\)는 \(\gamma\)-축약사상 (p.37 증명 동일) → 바나흐 고정점 정리 (p.38) → 벨만 최적 방정식은 고정점 \(v_*\)를 정의하고 \(V_k \to v_*\).</div>
 </section>
 
 <section class="card" id="vi" data-toc="Value Iteration 알고리즘">

@@ -67,6 +67,8 @@
     </div>
   </div>
 
+  <div id="reviewBox"></div>
+
   <h2 class="part-title" style="margin-top:56px"><small>the big picture</small>how it all connects</h2>
   <div class="roadmap">
     <span class="node">02 MDP: 문제 정의</span><span class="arr">→</span>
@@ -186,6 +188,24 @@
       ov.querySelector('.bar i').style.width = pct + '%';
     } else {
       ov.querySelector('.ov-text').textContent = '각 섹션의 “이해했으면 체크” 버튼을 누르면 여기 진도가 쌓여요.';
+    }
+
+    // 🔁 복습 필요로 표시한 섹션 모아 보기
+    const PAGES = { '02': ['02. MDP', 'ch02-mdp.html'], '03': ['03. Bellman', 'ch03-bellman.html'], '04': ['04. DP', 'ch04-dp.html'], '05': ['05. Monte Carlo', 'ch05-mc.html'], '06': ['06. TD', 'ch06-td.html'], sum: ['한눈에 요약', 'summary.html'], cmp: ['한눈에 비교', 'compare.html'] };
+    const groups = Object.keys(PAGES).map(k => {
+      const r = (window.RL_STORE && RL_STORE.get('review-' + k)) || {};
+      return [k, Object.entries(r).sort((a, b) => a[1].at - b[1].at)];
+    }).filter(([, items]) => items.length);
+    document.querySelectorAll('.ch-card').forEach(card => {
+      const g = groups.find(([k]) => k === card.dataset.ch);
+      if (g) card.insertAdjacentHTML('beforeend', `<span class="rev-count">🔁 복습 ${g[1].length}</span>`);
+    });
+    const box = document.getElementById('reviewBox');
+    if (groups.length) {
+      const n = groups.reduce((a, [, it]) => a + it.length, 0);
+      box.innerHTML = `<section class="card review-home"><h2>🔁 복습할 것 <span class="ko">${n}개</span></h2>
+        <p style="font-size:15px;color:var(--muted);margin:0 0 6px">각 섹션 오른쪽 위 <b>🔁 복습</b> 버튼으로 표시한 곳이에요. 다 봤으면 그 섹션에서 버튼을 다시 눌러 해제하세요.</p>
+        <div class="rh-grid">${groups.map(([k, items]) => `<div class="rh-col"><div class="rh-ch">${PAGES[k][0]}</div>${items.map(([id, v]) => `<a href="${PAGES[k][1]}#${id}">${(v.t || id).replace(/</g, '&lt;')}</a>`).join('')}</div>`).join('')}</div></section>`;
     }
   });
 </script>
