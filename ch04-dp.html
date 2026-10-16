@@ -102,7 +102,7 @@
     <p>모든 \(s\)에 대해 성립하므로 \(\|T^\pi v - T^\pi v'\|_\infty \le \gamma \|v - v'\|_\infty\). 즉 \(T^\pi\)는 \(\gamma\)-축약사상. \(\blacksquare\)</p>
     <p style="font-size:15px">(3장의 최적 연산자 증명과 달리 max가 없어서 보조정리 없이 바로 됨!)</p>
   </div>
-  <div class="note"><span class="hand">바나흐 고정점 정리 다시 소환</span>완비 공간 + 축약사상 ⇒ 유일한 고정점이 존재하고 반복하면 수렴. <b>벨만 기대 방정식은 고정점 \(v_\pi\)를 정의</b>하므로, \(v_k = T^\pi v_{k-1}\)을 반복하면 \(\lim_{k\to\infty} v_k = v_\pi\).</div>
+  <div class="note"><span class="hand">바나흐 고정점 정리 다시 소환</span>완비 공간 + 축약사상 ⇒ 유일한 고정점이 존재하고 반복하면 수렴. <b>벨만 기대 방정식은 고정점 \(v_\pi\)를 정의</b>하므로, \(V_k = T^\pi V_{k-1}\)을 반복하면 \(\lim_{k\to\infty} V_k = v_\pi\).</div>
 </section>
 
 <h2 class="part-title"><small>part 2</small>policy evaluation</h2>
@@ -113,9 +113,9 @@
   <ul>
     <li><b>문제</b>: 주어진 정책 \(\pi\)를 평가하기 (= \(v_\pi\) 구하기)</li>
     <li><b>해법</b>: 벨만 기대 백업을 반복 적용</li>
-    <li>\(v_1 \to v_2 \to \cdots \to v_\pi\)</li>
+    <li>\(V_1 \to V_2 \to \cdots \to v_\pi\)</li>
     <li><b>동기식(synchronous) 백업</b> 사용:
-      <ul><li>매 반복 \(k+1\)마다</li><li>모든 상태 \(s \in \S\)에 대해</li><li>\(v_k(s')\)로부터 \(v_{k+1}(s)\)를 갱신</li><li>여기서 \(s'\)은 \(s\)의 후속 상태</li></ul></li>
+      <ul><li>매 반복 \(k+1\)마다</li><li>모든 상태 \(s \in \S\)에 대해</li><li>\(V_k(s')\)로부터 \(V_{k+1}(s)\)를 갱신</li><li>여기서 \(s'\)은 \(s\)의 후속 상태</li></ul></li>
   </ul>
 <pre class="code"><span class="c"># Iterative Policy Evaluation (동기식)</span>
 V = [0] * n_states
@@ -158,11 +158,11 @@ env = gym.make(<span class="s">'FrozenLake-v1'</span>, is_slippery=<span class="
 <section class="card" id="pe-walk" data-toc="정책 평가 따라가기 (k=0→∞)">
   <h2>Policy Evaluation on FrozenLake <span class="ko">무작위 정책 평가</span></h2>
   <span class="slide-ref">p.10 – 18</span>
-  <p>정책 = 상하좌우 각각 0.25인 무작위 정책. \(v_0 = 0\)에서 시작해 벨만 기대 백업을 반복해요.</p>
+  <p>정책 = 상하좌우 각각 0.25인 무작위 정책. \(V_0 = 0\)에서 시작해 벨만 기대 백업을 반복해요.</p>
   <h3>손으로 따라가 보기</h3>
   <ul>
-    <li><b>k=1</b>: 14번 칸에서 →를 하면(확률 0.25) G 도착, 보상 10 → \(v_1(14) = 0.25 \times 10 = 2.5\). 나머지는 모두 0.</li>
-    <li><b>k=2</b>: \(v_2(10) = 0.25 \times (0 + 0.9 \times 2.5) = 0.56\) (↓로 14에 감), \(v_2(13) = 0.56\) (→로 14), \(v_2(14) = 0.25\times10 + 0.25\times 0.9 \times 2.5 = 3.06\) (→ 목표, ↓ 벽이라 제자리 14).</li>
+    <li><b>k=1</b>: 14번 칸에서 →를 하면(확률 0.25) G 도착, 보상 10 → \(V_1(14) = 0.25 \times 10 = 2.5\). 나머지는 모두 0.</li>
+    <li><b>k=2</b>: \(V_2(10) = 0.25 \times (0 + 0.9 \times 2.5) = 0.56\) (↓로 14에 감), \(V_2(13) = 0.56\) (→로 14), \(V_2(14) = 0.25\times10 + 0.25\times 0.9 \times 2.5 = 3.06\) (→ 목표, ↓ 벽이라 제자리 14).</li>
     <li>이렇게 목표 근처부터 가치가 퍼져 나가요 (“bottom-up”).</li>
   </ul>
   <div class="tbl-wrap"><table class="t">
@@ -327,9 +327,9 @@ pi = arbitrary_deterministic_policy()
   <span class="slide-ref">p.39 – 40</span>
   <div class="cols">
     <div class="box"><h4>Value Iteration</h4>
-      <ul><li>문제: 최적 정책 \(\pi_*\) 찾기</li><li>해법: <b>벨만 최적 백업</b> 반복</li><li>\(v_1 \to v_2 \to \cdots \to v_*\)</li><li>동기식 백업 (모든 s, \(v_k(s')\)로 \(v_{k+1}(s)\))</li><li><b>명시적 정책이 없음</b></li></ul></div>
+      <ul><li>문제: 최적 정책 \(\pi_*\) 찾기</li><li>해법: <b>벨만 최적 백업</b> 반복</li><li>\(V_1 \to V_2 \to \cdots \to v_*\)</li><li>동기식 백업 (모든 s, \(V_k(s')\)로 \(V_{k+1}(s)\))</li><li><b>명시적 정책이 없음</b></li></ul></div>
     <div class="box"><h4>Iterative Policy Evaluation</h4>
-      <ul><li>문제: 주어진 정책 \(\pi\) 평가</li><li>해법: <b>벨만 기대 백업</b> 반복</li><li>\(v_1 \to v_2 \to \cdots \to v_\pi\)</li><li>동기식 백업</li><li>정책이 고정되어 있음</li></ul></div>
+      <ul><li>문제: 주어진 정책 \(\pi\) 평가</li><li>해법: <b>벨만 기대 백업</b> 반복</li><li>\(V_1 \to V_2 \to \cdots \to v_\pi\)</li><li>동기식 백업</li><li>정책이 고정되어 있음</li></ul></div>
   </div>
 <pre class="code"><span class="c"># Value Iteration</span>
 V = [0] * n_states
@@ -345,12 +345,12 @@ pi = {s: argmax_a(...) <span class="k">for</span> s <span class="k">in</span> S}
   <h2>Value Iteration on FrozenLake</h2>
   <span class="slide-ref">p.41 – 49</span>
   <ul>
-    <li><b>k=1</b>: \(v_1(14) = \max_a[\dots] = 10\) (→로 목표). 나머지 0.</li>
-    <li><b>k=2</b>: \(v_2(10) = 0 + 0.9\times 10 = 9\) (↓), \(v_2(13) = 9\) (→).</li>
-    <li><b>k=3</b>: \(v_3(6) = v_3(9) = 8.1\)</li>
-    <li><b>k=4</b>: \(v_4(2) = v_4(8) = 7.29\)</li>
-    <li><b>k=5</b>: \(v_5(1) = v_5(3) = v_5(4) = 6.56\)</li>
-    <li><b>k=6</b>: \(v_6(0) = 5.91\) → 이후 변화 없음 (\(k=\infty\)와 동일)</li>
+    <li><b>k=1</b>: \(V_1(14) = \max_a[\dots] = 10\) (→로 목표). 나머지 0.</li>
+    <li><b>k=2</b>: \(V_2(10) = 0 + 0.9\times 10 = 9\) (↓), \(V_2(13) = 9\) (→).</li>
+    <li><b>k=3</b>: \(V_3(6) = V_3(9) = 8.1\)</li>
+    <li><b>k=4</b>: \(V_4(2) = V_4(8) = 7.29\)</li>
+    <li><b>k=5</b>: \(V_5(1) = V_5(3) = V_5(4) = 6.56\)</li>
+    <li><b>k=6</b>: \(V_6(0) = 5.91\) → 이후 변화 없음 (\(k=\infty\)와 동일)</li>
   </ul>
   <p>최종 최적 정책: 0 → ↓ … 처럼 구멍을 피해 목표까지 가는 최단 경로 (6스텝).</p>
   <div data-widget="frozenlake" data-mode="vi"></div>
@@ -403,10 +403,10 @@ pi = {s: argmax_a(...) <span class="k">for</span> s <span class="k">in</span> S}
   <details class="quiz"><summary>DP의 세 가지 성질은?</summary>
     <div class="ans">Substructure(부분문제로 분해), Table structure(해를 저장해 재사용), Bottom-up computation(작은 문제 → 큰 문제).</div></details>
   <details class="quiz"><summary>반복적 정책 평가와 가치 이터레이션의 업데이트 식 차이는?</summary>
-    <div class="ans">정책 평가: \(\sum_a \pi(a\mid s)\sum_{s'}p[r+\gamma v_k(s')]\) (기대 백업). 가치 이터레이션: \(\max_a \sum_{s'}p[r+\gamma v_k(s')]\) (최적 백업).</div></details>
+    <div class="ans">정책 평가: \(\sum_a \pi(a\mid s)\sum_{s'}p[r+\gamma V_k(s')]\) (기대 백업). 가치 이터레이션: \(\max_a \sum_{s'}p[r+\gamma V_k(s')]\) (최적 백업).</div></details>
   <details class="quiz"><summary>정책 이터레이션이 유한 번 안에 끝나는 이유는?</summary>
     <div class="ans">결정적 정책의 수가 유한(\(|\A|^{|\S|}\))하고, 매 반복마다 정책이 엄격히 개선되거나(같은 정책 재방문 불가) 멈추기 때문.</div></details>
-  <details class="quiz"><summary>FrozenLake 무작위 정책 평가에서 \(v_1(14)\)는? 가치 이터레이션에서는?</summary>
+  <details class="quiz"><summary>FrozenLake 무작위 정책 평가에서 \(V_1(14)\)는? 가치 이터레이션에서는?</summary>
     <div class="ans">정책 평가: \(0.25 \times 10 = 2.5\). 가치 이터레이션: \(\max = 10\).</div></details>
   <details class="quiz"><summary>FrozenLake 최적 가치 \(v_*(0) = 5.9\)는 어떻게 나온 값인가요?</summary>
     <div class="ans">시작점에서 목표까지 6스텝, 마지막 스텝에서 보상 10 → \(10 \times 0.9^5 = 5.905\).</div></details>

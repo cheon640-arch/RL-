@@ -163,7 +163,7 @@
         <b class="k" style="font-family:var(--font-mono)"></b>
       </div>
       <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
-        <div><div class="hand" style="font-size:20px">가치함수 v<sub>k</sub></div><div class="gw vals" style="grid-template-columns:repeat(4,auto)"></div></div>
+        <div><div class="hand" style="font-size:20px">가치함수 V<sub>k</sub></div><div class="gw vals" style="grid-template-columns:repeat(4,auto)"></div></div>
         <div><div class="hand" style="font-size:20px">그리디 정책</div><div class="gw pol" style="grid-template-columns:repeat(4,auto)"></div></div>
       </div>
       <div class="readout"></div>`;
@@ -226,7 +226,7 @@
       root.querySelector('.k').textContent = modeSel.value === 'pi' ? `반복 ${k}` : `k = ${k}`;
       root.querySelector('.readout').textContent = msg || ({
         eval: '무작위 정책(상하좌우 각 0.25)의 가치를 벨만 기대 방정식으로 반복 계산. 오른쪽은 그 가치에 대한 그리디 정책.',
-        vi: '벨만 최적 방정식을 반복 적용: v_{k+1}(s) = max_a Σ p(s′|s,a)[r + γ v_k(s′)]. 명시적 정책 없이 가치만 갱신.',
+        vi: '벨만 최적 방정식을 반복 적용: V_{k+1}(s) = max_a Σ p(s′|s,a)[r + γ V_k(s′)]. 명시적 정책 없이 가치만 갱신.',
         inplace: 'In-place: 값 테이블을 하나만 두고 갱신하자마자 바로 다음 상태 계산에 사용 (15→0 순서). 동기식보다 훨씬 빨리 수렴!',
         pi: '정책 이터레이션: (1) 현재 정책을 끝까지 평가 → (2) 그 가치에 대해 그리디하게 개선. 초기 정책 = 전부 ←.',
       })[modeSel.value];

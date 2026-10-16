@@ -157,7 +157,7 @@
   <h2>04 · Dynamic Programming</h2>
   <p class="oneliner">“모델을 알면 벨만 방정식을 반복 적용해서 정확히 푼다”</p>
   <ul>
-    <li>DP 3성질: <b>부분구조 · 테이블 · 상향식</b> (\(v_0=0 \to v_1 \to v_2 \cdots\))</li>
+    <li>DP 3성질: <b>부분구조 · 테이블 · 상향식</b> (\(V_0=0 \to V_1 \to V_2 \cdots\))</li>
     <li><b>정책 평가</b>: 벨만 기대 백업 반복 → \(v_\pi\) (기대 연산자도 γ-축약)</li>
     <li><b>정책 이터레이션</b>: 평가(끝까지) ↔ 그리디 개선. 정책 수가 유한 → 유한 번에 π*</li>
     <li><b>정책 개선 정리</b>: \(q_\pi(s,\pi'(s)) \ge v_\pi(s)\ \forall s \Rightarrow v_{\pi'} \ge v_\pi\)</li>
@@ -167,9 +167,9 @@
   </ul>
   <div class="sum-grid">
     <div class="must"><h4>꼭 외울 식</h4>
-      <div class="eq">\[\text{PE: } v_{k+1}(s) = \sum_a\pi(a\mid s)\sum_{s'}p\,[r + \gamma v_k(s')]\]</div>
+      <div class="eq">\[\text{PE: } V_{k+1}(s) = \sum_a\pi(a\mid s)\sum_{s'}p\,[r + \gamma V_k(s')]\]</div>
       <div class="eq">\[\text{개선: } \pi'(s) = \argmax_a \sum_{s'}p\,[r + \gamma v_\pi(s')]\]</div>
-      <div class="eq">\[\text{VI: } v_{k+1}(s) = \max_a\sum_{s'}p\,[r + \gamma v_k(s')]\]</div>
+      <div class="eq">\[\text{VI: } V_{k+1}(s) = \max_a\sum_{s'}p\,[r + \gamma V_k(s')]\]</div>
       <p style="font-size:14px;margin:4px 0 0">FrozenLake: 무작위 정책 v(0)≈0.04, 최적 v*(0)=10×0.9⁵≈5.9</p></div>
     <div class="trap"><h4>자주 헷갈림</h4>
       <ul>

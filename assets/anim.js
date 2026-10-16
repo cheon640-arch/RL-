@@ -475,7 +475,7 @@
         mk(svg, 'text', { x: 310, y: 262, fill: C.ink, 'font-size': 13 }, '➜ = 지금 가치에 대한 그리디 행동');
         V = Array(16).fill(0); k = 0; el.cur = 15;
         draw([]);
-        ctl.cap('v₀ = 0 에서 시작. 매번 v(s) ← max_a [ r + γ·v(s′) ] 로 갱신해요. 명시적인 정책 없이 가치만!');
+        ctl.cap('V₀ = 0 에서 시작. 매번 v(s) ← max_a [ r + γ·v(s′) ] 로 갱신해요. 명시적인 정책 없이 가치만!');
       },
       async step(ctl) {
         const inplace = ctl.opt('mode') === 'inplace';
@@ -487,10 +487,10 @@
           el.k.textContent = `k = ${k}`; el.sub.textContent = changed.length ? `${changed.length}개 칸 갱신` : '변화 없음 → 수렴!';
           if (changed.length) {
             const s = changed[0]; const a = [0, 1, 2, 3].reduce((b, x) => FL.q(V, s, x) > FL.q(V, s, b) ? x : b, 0);
-            el.fx.textContent = `예) v${SUB(k)}(${s}) = max_a [r + 0.9·v${SUB(k - 1)}(s′)]`;
+            el.fx.textContent = `예) V${SUB(k)}(${s}) = max_a [r + 0.9·V${SUB(k - 1)}(s′)]`;
             el.fx2.textContent = `      = ${V[s].toFixed(2)}  (${FL.names[a]})`;
           }
-          ctl.cap(changed.length ? `<b>k = ${k}</b> · 동기식: 모든 칸을 이전 표 v${SUB(k - 1)} 로 한꺼번에 갱신. 가치가 목표에서 한 칸씩 퍼지며 0.9배씩 줄어요 (10 → 9 → 8.1 → 7.29 …).`
+          ctl.cap(changed.length ? `<b>k = ${k}</b> · 동기식: 모든 칸을 이전 표 V${SUB(k - 1)} 로 한꺼번에 갱신. 가치가 목표에서 한 칸씩 퍼지며 0.9배씩 줄어요 (10 → 9 → 8.1 → 7.29 …).`
             : `✔ 더 이상 안 바뀜 → v* 도달 (k = ${k}). 화살표 = 최적 정책. 시작점 가치 5.9 = 10 × 0.9⁵`);
           return changed.length > 0;
         }

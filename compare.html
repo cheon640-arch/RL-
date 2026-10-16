@@ -155,7 +155,7 @@
     <thead><tr><th>개념</th><th>뜻</th><th>RL 에서의 역할</th></tr></thead>
     <tbody>
       <tr><td>거리 공간</td><td>비음수·동일성·대칭·삼각부등식을 만족하는 거리 d</td><td>\((\R^{|\S|}, \|\cdot\|_\infty)\): 가치함수 사이 거리 = 최대 차이</td></tr>
-      <tr><td>코시 수열</td><td>뒤로 갈수록 항끼리 한없이 가까워짐</td><td>\(v_0, v_1, v_2, \dots\) 가 코시가 됨</td></tr>
+      <tr><td>코시 수열</td><td>뒤로 갈수록 항끼리 한없이 가까워짐</td><td>\(V_0, V_1, V_2, \dots\) 가 코시가 됨</td></tr>
       <tr><td>완비 공간</td><td>모든 코시 수열이 공간 안에서 수렴 (ℚ ✗, ℝⁿ ✓)</td><td>극한 \(v_*\) 가 \(\R^{|\S|}\) 안에 존재</td></tr>
       <tr><td>축약사상</td><td>\(d(Tx,Ty) \le \gamma d(x,y),\ 0\le\gamma\lt1\)</td><td>벨만 기대·최적 연산자 모두 γ-축약</td></tr>
       <tr><td>바나흐 정리</td><td>완비 + 축약 ⇒ 유일한 고정점, 반복하면 수렴</td><td>\(v_\pi, v_*\) 존재·유일, PE·VI 수렴 보장</td></tr>
@@ -173,7 +173,7 @@
     <tbody>
       <tr><td>문제</td><td>주어진 π 의 \(v_\pi\) 구하기 (예측)</td><td>π* 찾기 (제어)</td><td>π* 찾기 (제어)</td></tr>
       <tr><td>사용 방정식</td><td>벨만 기대</td><td>기대(평가) + 그리디 개선</td><td>벨만 최적</td></tr>
-      <tr><td>업데이트</td><td>\(\sum_a\pi\sum_{s'}p[r+\gamma v_k]\)</td><td>평가 수렴 → \(\pi' = \text{greedy}(v_\pi)\)</td><td>\(\max_a\sum_{s'}p[r+\gamma v_k]\)</td></tr>
+      <tr><td>업데이트</td><td>\(\sum_a\pi\sum_{s'}p[r+\gamma V_k]\)</td><td>평가 수렴 → \(\pi' = \text{greedy}(v_\pi)\)</td><td>\(\max_a\sum_{s'}p[r+\gamma V_k]\)</td></tr>
       <tr><td>명시적 정책</td><td>고정된 π</td><td>있음 (매 반복 갱신)</td><td><b>없음</b> (마지막에 한 번 추출)</td></tr>
       <tr><td>수렴 근거</td><td>기대 연산자 γ-축약</td><td>정책 개선 정리 + 정책 수 유한</td><td>최적 연산자 γ-축약</td></tr>
       <tr><td>반복 비용</td><td>sweep 당 \(O(|\A||\S|^2)\)</td><td>반복 수 적지만 한 번이 비쌈 (평가 전체)</td><td>반복 하나가 싸지만 횟수 많을 수 있음</td></tr>
