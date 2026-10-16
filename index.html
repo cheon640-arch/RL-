@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rl notebook — 강화학습개론</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<style>
+  .home-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; padding: 64px 0 24px; position: relative; }
+  .notebook { position: relative; aspect-ratio: 4/5; max-width: 380px; margin-left: auto; transform: rotate(6deg); }
+  .notebook .cover { position: absolute; inset: 0; border-radius: 16px; background: #8a5a36; border: 1.5px solid #171717; box-shadow: var(--shadow-card), inset -18px 0 0 rgba(0,0,0,.12); }
+  .notebook .cover::before { content: ""; position: absolute; inset: 14px; border: 1.5px dashed rgba(253,251,249,.35); border-radius: 10px; }
+  .notebook .nl2 { position: absolute; left: 14%; right: 14%; top: 30%; background: #fff; border: 1px solid #171717; border-radius: 8px; padding: 12px 16px; font-family: var(--font-ui); font-size: 13px; color: var(--charcoal); }
+  .notebook .nl2 .row { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px solid rgba(23,23,23,.2); padding: 4px 0; }
+  .notebook .nl2 .row b { font-weight: 500; width: 56px; flex: none; }
+  .notebook .nl2 .row span { font-family: var(--font-hand); font-size: 22px; color: var(--sky); line-height: 1; }
+  .notebook .pencil { position: absolute; right: -26px; top: 12%; width: 18px; height: 78%; border-radius: 4px; background: linear-gradient(90deg, #f5c044, #e9a826); border: 1.5px solid #171717; transform: rotate(4deg); }
+  .notebook .pencil::after { content: ""; position: absolute; bottom: -22px; left: -1.5px; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 22px solid #e9c9a0; }
+  .caption-arrow { position: absolute; left: -150px; top: 4%; font-family: var(--font-hand); color: var(--orange); font-size: 24px; transform: rotate(-6deg); }
+  .caption-arrow svg { display: block; margin: 0 0 0 60px; }
+  .overall { font-family: var(--font-ui); font-size: 14px; color: var(--muted); margin-top: 18px; }
+  .overall .bar { height: 8px; border-radius: 8px; background: var(--dew); border: 1px solid rgba(23,23,23,.12); overflow: hidden; max-width: 360px; margin-top: 6px; }
+  .overall .bar i { display: block; height: 100%; width: 0; background: var(--orange); transition: width .4s; }
+  @media (max-width: 860px) { .home-hero { grid-template-columns: 1fr; } .notebook { margin: 30px auto 0; max-width: 280px; } .caption-arrow { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="home-hero">
+    <div>
+      <span class="kicker">강화학습개론 · 2026 fall</span>
+      <h1 class="display">meet your<br>rl notebook</h1>
+      <p class="lede" style="font-size:20px;max-width:560px">강의자료 5개(MDP → 벨만 → DP → MC → TD)의 내용을 <span class="mk">빠짐없이</span> 정리한 나만의 공부 노트. 슬라이드 번호, 유도 과정, 예제 계산, 직접 만져보는 위젯, 셀프 퀴즈까지 다 들어 있어요.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a class="pill" href="ch02-mdp.html">처음부터 시작하기 →</a>
+        <a class="pill" href="summary.html">★ 한눈에 요약</a>
+        <a class="pill" href="compare.html">★ 한눈에 비교</a>
+        <a class="pill" href="#review">공식 한 장</a>
+      </div>
+      <div class="overall"><span class="ov-text">진도 불러오는 중…</span><div class="bar"><i></i></div></div>
+    </div>
+    <div style="position:relative">
+      <div class="notebook">
+        <div class="cover"></div>
+        <div class="nl2">
+          <div class="row"><b>Name</b><span>RL notebook</span></div>
+          <div class="row"><b>Class</b><span>강화학습개론</span></div>
+          <div class="row" style="border:0"><b>Goal</b><span>max Σ γᵏ R</span></div>
+        </div>
+        <div class="pencil"></div>
+        <div class="caption-arrow">a big brown parchi
+          <svg width="90" height="50" viewBox="0 0 90 50" fill="none" stroke="#171717" stroke-width="1.5" stroke-linecap="round"><path d="M4 6 C 30 4, 60 14, 80 40"/><path d="M70 36 L81 41 L80 29"/></svg>
+        </div>
+      </div>
+      <div data-sticker="bolt" data-rot="-14" style="left:-10px;bottom:-10px;width:56px;height:74px"></div>
+      <div data-sticker="heart" data-rot="11" style="right:-10px;top:-24px;width:70px;height:64px"></div>
+      <div data-sticker="ghost" data-rot="-7" style="right:30%;bottom:-36px;width:52px;height:60px"></div>
+    </div>
+  </div>
+
+  <h2 class="part-title" style="margin-top:56px"><small>the big picture</small>how it all connects</h2>
+  <div class="roadmap">
+    <span class="node">02 MDP: 문제 정의</span><span class="arr">→</span>
+    <span class="node">03 Bellman: 재귀식</span><span class="arr">→</span>
+    <span class="node">04 DP: 모델 알 때 정확히</span><span class="arr">→</span>
+    <span class="node hot">05 MC: 모델 없이, 에피소드로</span><span class="arr">→</span>
+    <span class="node hot">06 TD: 모델 없이, 한 스텝씩</span>
+  </div>
+
+  <div class="ch-grid">
+    <a class="ch-card" href="ch02-mdp.html" data-ch="02">
+      <span class="nl">31 slides</span>
+      <div class="no">02</div>
+      <h3>finite markov decision processes</h3>
+      <div class="ko">유한 마르코프 결정 과정</div>
+      <ul><li>확률과정 · 마르코프 체인 · MRP · MDP</li><li>리턴, 할인율, episodic/continuous</li><li>정책 · 가치함수 · 최적 정책 정리</li></ul>
+      <div class="mini-bar"><i></i></div>
+    </a>
+    <a class="ch-card" href="ch03-bellman.html" data-ch="03">
+      <span class="nl">27 slides</span>
+      <div class="no">03</div>
+      <h3>bellman equation</h3>
+      <div class="ko">벨만 기대·최적 방정식</div>
+      <ul><li>v, q의 벨만 기대 방정식 유도 & 행렬형</li><li>벨만 최적 방정식 & 백업 다이어그램</li><li>축약사상 · 바나흐 고정점 → v* 존재·유일</li></ul>
+      <div class="mini-bar"><i></i></div>
+    </a>
+    <a class="ch-card" href="ch04-dp.html" data-ch="04">
+      <span class="nl">53 slides</span>
+      <div class="no">04</div>
+      <h3>dynamic programming</h3>
+      <div class="ko">동적 계획법</div>
+      <ul><li>반복적 정책 평가 (FrozenLake)</li><li>정책 개선 정리 · 정책 이터레이션 · GPI</li><li>가치 이터레이션 · 비동기 DP</li></ul>
+      <div class="mini-bar"><i></i></div>
+    </a>
+    <a class="ch-card" href="ch05-mc.html" data-ch="05">
+      <span class="nl">43 slides</span>
+      <div class="no">05</div>
+      <h3>monte carlo method</h3>
+      <div class="ko">몬테카를로 강화학습</div>
+      <ul><li>DP vs RL · 큰 수의 법칙 · 증분 평균</li><li>ε-greedy · ε-soft · GLIE</li><li>McAgent 파이썬 구현 · 지수이동평균</li></ul>
+      <div class="mini-bar"><i></i></div>
+    </a>
+    <a class="ch-card" href="ch06-td.html" data-ch="06">
+      <span class="nl">50 slides</span>
+      <div class="no">06</div>
+      <h3>temporal difference learning</h3>
+      <div class="ko">시간차 학습</div>
+      <ul><li>MC vs TD · 편향/분산 · AB 예제</li><li>SARSA · Q-learning · on/off-policy · Cliff</li><li>n-step · TD(λ) · eligibility trace</li></ul>
+      <div class="mini-bar"><i></i></div>
+    </a>
+  </div>
+
+  <h2 class="part-title" id="review"><small>시험 전에 이것만 보기</small>one-page cheat sheet</h2>
+  <section class="card">
+    <h2>핵심 공식 모음</h2>
+    <div class="tbl-wrap"><table class="t">
+      <thead><tr><th>개념</th><th>식</th><th>장</th></tr></thead>
+      <tbody>
+        <tr><td>MDP</td><td>\(\langle \S, \A, \P, \Rc, \gamma\rangle\), \(\P^a_{ss'} = P[S_{t+1}=s'\mid S_t=s, A_t=a]\)</td><td>02</td></tr>
+        <tr><td>Return</td><td>\(G_t = \sum_{k=0}^\infty \gamma^k R_{t+k+1} = R_{t+1} + \gamma G_{t+1}\)</td><td>02</td></tr>
+        <tr><td>가치함수</td><td>\(v_\pi(s) = \E_\pi[G_t\mid S_t=s]\), \(q_\pi(s,a) = \E_\pi[G_t\mid S_t=s,A_t=a]\), \(v_\pi = \sum_a \pi q_\pi\)</td><td>02</td></tr>
+        <tr><td>벨만 기대 (v)</td><td>\(v_\pi(s) = \sum_a\sum_{s'}\pi(a\mid s)p(s'\mid s,a)[r + \gamma v_\pi(s')]\)</td><td>03</td></tr>
+        <tr><td>벨만 기대 (q)</td><td>\(q_\pi(s,a) = \sum_{s'}p(s'\mid s,a)[r + \gamma\sum_{a'}\pi(a'\mid s')q_\pi(s',a')]\)</td><td>03</td></tr>
+        <tr><td>행렬 해</td><td>\(v_\pi = (I - \gamma\P^\pi)^{-1}\Rc^\pi\)</td><td>03</td></tr>
+        <tr><td>벨만 최적 (v*)</td><td>\(v_*(s) = \max_a\sum_{s'}p(s'\mid s,a)[r + \gamma v_*(s')]\)</td><td>03</td></tr>
+        <tr><td>벨만 최적 (q*)</td><td>\(q_*(s,a) = \sum_{s'}p(s'\mid s,a)[r + \gamma\max_{a'}q_*(s',a')]\)</td><td>03</td></tr>
+        <tr><td>축약사상</td><td>\(\|Tv - Tv'\|_\infty \le \gamma\|v - v'\|_\infty\) → 바나흐: 유일 고정점, 반복 수렴</td><td>03·04</td></tr>
+        <tr><td>정책 평가</td><td>\(v_{k+1}(s) = \sum_a\pi(a\mid s)\sum_{s'}p[r + \gamma v_k(s')]\)</td><td>04</td></tr>
+        <tr><td>정책 개선</td><td>\(\pi'(s) = \argmax_a q_\pi(s,a)\); \(q_\pi(s,\pi'(s)) \ge v_\pi(s) \Rightarrow v_{\pi'} \ge v_\pi\)</td><td>04</td></tr>
+        <tr><td>가치 이터레이션</td><td>\(v_{k+1}(s) = \max_a\sum_{s'}p[r + \gamma v_k(s')]\)</td><td>04</td></tr>
+        <tr><td>MC (증분)</td><td>\(Q(S_t,A_t) \leftarrow Q + \frac{1}{N}(G_t - Q)\) 또는 \(+\alpha(G_t - Q)\)</td><td>05</td></tr>
+        <tr><td>ε-greedy</td><td>\(\pi(a\mid s) = \varepsilon/m + 1 - \varepsilon\) (greedy), \(\varepsilon/m\) (otherwise)</td><td>05</td></tr>
+        <tr><td>GLIE</td><td>\(N_k(s,a)\to\infty\), \(\pi_k \to\) greedy (예: \(\varepsilon_k = 1/k\))</td><td>05</td></tr>
+        <tr><td>TD(0)</td><td>\(V(S_t) \leftarrow V(S_t) + \alpha[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)]\)</td><td>06</td></tr>
+        <tr><td>SARSA</td><td>\(Q(S,A) \leftarrow Q(S,A) + \alpha[R + \gamma Q(S',A') - Q(S,A)]\)</td><td>06</td></tr>
+        <tr><td>Q-learning</td><td>\(Q(S,A) \leftarrow Q(S,A) + \alpha[R + \gamma\max_a Q(S',a) - Q(S,A)]\)</td><td>06</td></tr>
+        <tr><td>Robbins-Monro</td><td>\(\sum_t\alpha_t = \infty,\ \sum_t\alpha_t^2 \lt \infty\)</td><td>06</td></tr>
+        <tr><td>n-step return</td><td>\(G_t^{(n)} = R_{t+1} + \cdots + \gamma^{n-1}R_{t+n} + \gamma^n V(S_{t+n})\)</td><td>06</td></tr>
+        <tr><td>λ-return</td><td>\(G_t^\lambda = (1-\lambda)\sum_{n\ge1}\lambda^{n-1}G_t^{(n)}\); TD(0)=TD, TD(1)=MC</td><td>06</td></tr>
+        <tr><td>Eligibility trace</td><td>\(E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t=s)\), \(V(s) \leftarrow V(s) + \alpha\delta_t E_t(s)\)</td><td>06</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card tint">
+    <h2>헷갈리는 비교 한눈에</h2>
+    <div class="tbl-wrap"><table class="t">
+      <thead><tr><th></th><th>DP</th><th>MC</th><th>TD (SARSA / Q-learning)</th></tr></thead>
+      <tbody>
+        <tr><td>모델 필요?</td><td>O (p, r 필요)</td><td>X</td><td>X</td></tr>
+        <tr><td>부트스트래핑?</td><td>O</td><td>X</td><td>O</td></tr>
+        <tr><td>샘플링?</td><td>X (full backup)</td><td>O</td><td>O</td></tr>
+        <tr><td>언제 업데이트?</td><td>sweep 마다</td><td>에피소드 끝</td><td>매 스텝</td></tr>
+        <tr><td>Continuous task</td><td>O</td><td>X</td><td>O</td></tr>
+        <tr><td>편향 / 분산</td><td>–</td><td>편향 0 / 분산 큼</td><td>편향 약간 / 분산 작음</td></tr>
+        <tr><td>On / Off policy</td><td>–</td><td>On (ε-greedy)</td><td>SARSA: On, Q-learning: Off</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    let done = 0, total = 0;
+    document.querySelectorAll('.ch-card').forEach(card => {
+      const id = card.dataset.ch;
+      const d = (window.RL_STORE && RL_STORE.get('done-' + id)) || {};
+      const t = (window.RL_STORE && RL_STORE.get('total-' + id)) || 0;
+      const n = Object.values(d).filter(Boolean).length;
+      done += n; total += t;
+      if (t) card.querySelector('.mini-bar i').style.width = Math.round(n / t * 100) + '%';
+    });
+    const ov = document.querySelector('.overall');
+    if (total) {
+      const pct = Math.round(done / total * 100);
+      ov.querySelector('.ov-text').textContent = `전체 진도: ${done} / ${total} 섹션 이해 완료 (${pct}%)`;
+      ov.querySelector('.bar i').style.width = pct + '%';
+    } else {
+      ov.querySelector('.ov-text').textContent = '각 섹션의 “이해했으면 체크” 버튼을 누르면 여기 진도가 쌓여요.';
+    }
+  });
+</script>
+</body>
+</html>

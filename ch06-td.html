@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06. Temporal Difference — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/widgets.js"></script>
+<script defer src="assets/anim.js"></script>
+<script defer src="assets/notes.js"></script>
+</head>
+<body data-ch="06">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">lecture 06 · 끝까지 기다리지 않고 배우기</span>
+    <h1 class="display">temporal<br>difference learning</h1>
+    <p class="lede">MC는 에피소드가 끝나야 배울 수 있었죠. TD는 <span class="mk">한 스텝마다</span> “내 예측 vs 한 스텝 뒤의 더 나은 예측”의 차이로 배워요. SARSA, Q-learning, on/off-policy, 그리고 n-step·TD(λ)·eligibility trace까지.</p>
+    <div class="meta">원본: 06.Temporal Difference.pdf (50 slides) · Hyelim Shin, PNU IE</div>
+    <div data-sticker="ghost" data-rot="-9" style="right:8%;top:70px;width:66px;height:76px"></div>
+    <div data-sticker="heart" data-rot="12" style="right:19%;top:200px;width:64px;height:58px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<h2 class="part-title"><small>part 1</small>from mc to td</h2>
+
+<section class="card tint" id="mc-recap" data-toc="MC 복습 & 한계">
+  <h2>Limitation of MC RL <span class="ko">MC의 한계</span></h2>
+  <span class="slide-ref">p.2 – 4</span>
+  <p>복습: MC는 에피소드 경험에서 직접 배우고, model-free이며, <b>완전한 에피소드</b>로 배우고(부트스트래핑 없음), 가치 = 평균 리턴.</p>
+  <p>복습: Episodic task(끝이 있음) vs Continuous task(끝이 없음, \(\gamma \ne 1\); 예: 로봇 청소기, 주식 트레이딩, 공장 제어, 신호 제어).</p>
+  <div class="label"><span class="tag">limitation</span>
+    <ul>
+      <li>MC RL은 <b>continuous task</b>에 적용하기 어렵다 (에피소드가 안 끝나니 리턴을 못 구함).</li>
+      <li>에피소드가 길면 학습이 <b>느리고 불안정</b>하다.</li>
+    </ul>
+  </div>
+  <div class="cols">
+    <div class="box"><h4>DP</h4><p>모든 가능한 다음 상태 1스텝 (모델 필요, 부트스트래핑 O)</p></div>
+    <div class="box"><h4>MC</h4><p>샘플 한 경로를 끝까지 (모델 불필요, 부트스트래핑 X)</p></div>
+  </div>
+  <div class="box" style="margin-top:20px"><h4>TD</h4><p>샘플 한 경로를 <b>1스텝만</b> (모델 불필요, 부트스트래핑 O) → DP와 MC의 장점을 합침!</p></div>
+</section>
+
+<section class="card" id="dp-mc-td" data-toc="DP, MC, TD 업데이트 비교">
+  <h2>DP, MC, TD <span class="ko">세 가지 업데이트 식</span></h2>
+  <span class="slide-ref">p.5</span>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th></th><th>업데이트</th></tr></thead>
+    <tbody>
+      <tr><td><b>DP</b></td><td>\(V_{\pi}'(s) = \sum_{a,s'} \pi(a\mid s)\,p(s'\mid s,a)\big[r(s,a,s') + \gamma V_\pi(s')\big]\)</td></tr>
+      <tr><td><b>MC</b></td><td>\(V_\pi'(S_t) = V_\pi(S_t) + \alpha\big[G_t - V_\pi(S_t)\big]\)</td></tr>
+      <tr class="hl"><td><b>TD</b></td><td>\(V_\pi'(S_t) = V_\pi(S_t) + \alpha\big[R_{t+1} + \gamma V_\pi(S_{t+1}) - V_\pi(S_t)\big]\)</td></tr>
+    </tbody>
+  </table></div>
+  <p>TD는 어디서 왔을까? 벨만 기대 방정식을 기댓값 꼴로 쓰면:</p>
+  <div class="eq">\[v_\pi(s) = \sum_{a,s'}\pi(a\mid s)\,p(s'\mid s,a)\big[r(s,a,s') + \gamma v_\pi(s')\big] = \E_\pi\big[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s\big]\]</div>
+  <p>기댓값을 모르니까 <b>샘플 하나</b> \(R_{t+1} + \gamma V(S_{t+1})\)로 대신하고, MC처럼 조금씩(α) 그쪽으로 옮기는 것!</p>
+  <div class="eq">\[V_\pi'(S_t) = V_\pi(S_t) + \alpha\big[\underbrace{\overbrace{R_{t+1} + \gamma V_\pi(S_{t+1})}^{\text{TD target}} - V_\pi(S_t)}_{\text{TD error } (\delta_t)}\big]\]</div>
+</section>
+
+<section class="card" id="driving" data-toc="예: 퇴근길 운전">
+  <h2>MC vs TD: Driving Home Example <span class="ko">퇴근길</span></h2>
+  <span class="slide-ref">p.6 – 7</span>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>State</th><th class="num">Elapsed (min)</th><th class="num">Predicted Time to Go</th><th class="num">Predicted Total</th></tr></thead>
+    <tbody>
+      <tr><td>Leaving office</td><td class="num">0</td><td class="num">30</td><td class="num">30</td></tr>
+      <tr><td>Reach car, raining</td><td class="num">5</td><td class="num">35</td><td class="num">40</td></tr>
+      <tr><td>Exiting highway</td><td class="num">20</td><td class="num">15</td><td class="num">35</td></tr>
+      <tr><td>2ndary road, behind truck</td><td class="num">30</td><td class="num">10</td><td class="num">40</td></tr>
+      <tr><td>Entering home street</td><td class="num">40</td><td class="num">3</td><td class="num">43</td></tr>
+      <tr><td>Arrive home</td><td class="num">43</td><td class="num">0</td><td class="num">43</td></tr>
+    </tbody>
+  </table></div>
+  <p>\(\alpha = 1\)일 때 각 상태의 “예상 총 시간”을 얼마나 고치라고 하는지:</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>State</th><th class="num">예측</th><th class="num">MC가 권하는 변화 (→ 실제 43)</th><th class="num">TD가 권하는 변화 (→ 다음 예측)</th></tr></thead>
+    <tbody>
+      <tr><td>Leaving office</td><td class="num">30</td><td class="num">+13</td><td class="num">+10 (→40)</td></tr>
+      <tr><td>Reach car</td><td class="num">40</td><td class="num">+3</td><td class="num">−5 (→35)</td></tr>
+      <tr><td>Exiting highway</td><td class="num">35</td><td class="num">+8</td><td class="num">+5 (→40)</td></tr>
+      <tr><td>2ndary road</td><td class="num">40</td><td class="num">+3</td><td class="num">+3 (→43)</td></tr>
+      <tr><td>Home street</td><td class="num">43</td><td class="num">0</td><td class="num">0 (→43)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><span class="hand">핵심 차이</span>MC는 집에 도착해서 실제 43분을 알아야 고칠 수 있지만, TD는 “차에 도착했는데 비가 오네 → 40분 걸리겠다” 하는 순간 바로 출발 시점의 예측(30)을 고칠 수 있어요!</div>
+</section>
+
+<section class="card" id="mc-vs-td" data-toc="MC vs TD 장단점">
+  <h2>MC vs TD <span class="ko">장단점</span></h2>
+  <span class="slide-ref">p.8</span>
+  <ul>
+    <li><b>TD는 최종 결과를 알기 전에 학습할 수 있다</b>
+      <ul><li>TD는 매 스텝 후 온라인으로 학습 가능</li><li>MC는 에피소드가 끝나 리턴이 알려질 때까지 기다려야 함</li></ul></li>
+    <li><b>TD는 최종 결과 없이도 학습할 수 있다</b>
+      <ul><li>TD는 불완전한 수열로부터 학습 가능, MC는 완전한 수열로부터만</li>
+      <li>TD는 연속(종료 없는) 환경에서도 작동, MC는 에피소드(종료) 환경에서만</li></ul></li>
+  </ul>
+<div data-anim="mctd"></div>
+</section>
+
+<section class="card" id="bias-var" data-toc="편향-분산 트레이드오프">
+  <h2>Bias/Variance Trade-Off <span class="ko">편향과 분산</span></h2>
+  <span class="slide-ref">p.9 – 10</span>
+  <ul>
+    <li>리턴 \(G_t = R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{T-1}R_T\)는 \(v_\pi(S_t)\)의 <b>불편(unbiased)</b> 추정치</li>
+    <li><b>진짜</b> TD 타깃 \(R_{t+1} + \gamma v_\pi(S_{t+1})\)도 \(v_\pi(S_t)\)의 불편 추정치</li>
+    <li>하지만 실제 TD 타깃 \(R_{t+1} + \gamma V(S_{t+1})\)은 <b>편향된(biased)</b> 추정치 — 부트스트래핑(추정치 \(V\)를 쓰니까)</li>
+    <li>TD 타깃은 리턴보다 <b>분산이 훨씬 작다</b>:
+      <ul><li>리턴은 많은 무작위 행동·전이·보상에 의존</li><li>TD 타깃은 무작위 행동·전이·보상 <b>하나</b>에만 의존</li></ul></li>
+  </ul>
+  <div class="cols">
+    <div class="box"><h4>MC: 높은 분산, 편향 0</h4>
+      <ul><li>수렴 성질이 좋다</li><li>초기값에 그다지 민감하지 않다</li><li>이해하고 쓰기 매우 간단</li></ul></div>
+    <div class="box"><h4>TD: 낮은 분산, 약간의 편향</h4>
+      <ul><li>보통 MC보다 효율적</li><li>TD(0)는 \(v_\pi(s)\)로 수렴</li><li>초기값에 더 민감</li></ul></div>
+  </div>
+</section>
+
+<section class="card" id="batch" data-toc="Batch MC/TD & AB 예제">
+  <h2>Batch MC and TD &amp; AB Example</h2>
+  <span class="slide-ref">p.11 – 13</span>
+  <p>경험이 무한하면 MC와 TD 모두 \(V(s) \to v_\pi(s)\). 그렇다면 <b>유한한</b> 경험(\(K\)개 에피소드)을 반복해서 학습(batch)하면 둘은 어디로 갈까?</p>
+  <h3>AB 예제 (두 상태, 할인 없음, 8개 에피소드)</h3>
+  <div class="cols">
+    <div><p style="font-family:var(--font-mono);font-size:15px">A,0,B,0<br>B,1<br>B,1<br>B,1<br>B,1<br>B,1<br>B,1<br>B,0</p></div>
+    <div>
+      <p>\(V(B)\): B에서 8번 중 6번 보상 1 → 둘 다 \(V(B) = 6/8 = 0.75\).</p>
+      <p>\(V(A)\)는?</p>
+      <ul>
+        <li><b>MC</b>: A는 한 번 나왔고 그때 리턴 0 → \(V(A) = 0\). (관측된 리턴에 대한 최소제곱 해)</li>
+        <li><b>TD</b>: A → B 로 100% 가고 보상 0 → \(V(A) = 0 + V(B) = 0.75\). (데이터로 추정한 <b>MDP의 최대우도 모델</b>에 대한 해)</li>
+      </ul>
+    </div>
+  </div>
+  <div data-widget="ab"></div>
+  <div class="note"><span class="hand">그래서</span><b>TD는 마르코프 성질을 활용</b> → 마르코프 환경에서 보통 더 효율적. <b>MC는 마르코프 성질을 활용하지 않음</b> → 비마르코프 환경에서 보통 더 효과적.</div>
+</section>
+
+<section class="card tint" id="unified" data-toc="RL 통합 관점">
+  <h2>Unified View of Reinforcement Learning</h2>
+  <span class="slide-ref">p.14</span>
+  <figure class="fig">
+    <svg viewBox="0 0 520 300" font-family="Geist, sans-serif" font-size="14">
+      <defs><marker id="ua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2b1a07"/></marker></defs>
+      <rect x="120" y="40" width="280" height="220" rx="12" fill="#f7efe9" stroke="#171717" stroke-width="1.5"/>
+      <path d="M150 25 L370 25" stroke="#ce500a" stroke-width="1.6" marker-end="url(#ua)"/>
+      <text x="260" y="18" text-anchor="middle" fill="#ce500a">width of backup (모든 경우를 보나?)</text>
+      <path d="M100 60 L100 240" stroke="#15803d" stroke-width="1.6" marker-end="url(#ua)"/>
+      <text x="80" y="150" text-anchor="middle" fill="#15803d" transform="rotate(-90 80 150)">height (depth) of backup</text>
+      <g fill="#2b1a07" font-size="16" font-weight="600">
+        <text x="135" y="70">TD learning</text><text x="385" y="70" text-anchor="end">Dynamic programming</text>
+        <text x="135" y="245">Monte Carlo</text><text x="385" y="245" text-anchor="end">Exhaustive search</text>
+      </g>
+      <g font-family="Gaegu" font-size="17" fill="#ce500a"><text x="135" y="92">샘플·얕음</text><text x="385" y="92" text-anchor="end">전체·얕음</text><text x="135" y="225">샘플·깊음</text><text x="385" y="225" text-anchor="end">전체·깊음</text></g>
+    </svg>
+  </figure>
+  <p>백업의 <b>너비</b>(샘플 vs 전체 기대값)와 <b>깊이</b>(1스텝 부트스트랩 vs 끝까지)로 RL 방법들을 한 그림에 정리할 수 있어요.</p>
+</section>
+
+<h2 class="part-title"><small>part 2</small>sarsa</h2>
+
+<section class="card" id="sarsa-update" data-toc="SARSA 업데이트">
+  <h2>Updating Action-Value Functions with SARSA</h2>
+  <span class="slide-ref">p.16 – 17</span>
+  <p>TD를 \(V\)에서 \(Q\)로 바꾸면 (MC 때처럼 model-free 제어를 하려고):</p>
+  <div class="eq">\[V_\pi'(S_t) = V_\pi(S_t) + \alpha\big[R_{t+1} + \gamma V_\pi(S_{t+1}) - V_\pi(S_t)\big]\]</div>
+  <div class="eq">\[Q_\pi'(S_t, A_t) = Q_\pi(S_t,A_t) + \alpha\big[R_{t+1} + \gamma Q_\pi(S_{t+1}, A_{t+1}) - Q_\pi(S_t,A_t)\big]\]</div>
+  <p>업데이트에 \((S_t, A_t, R_{t+1}, S_{t+1}, A_{t+1})\) 다섯 개가 쓰여서 이름이 <b>S-A-R-S-A</b>!</p>
+  <div class="eq">\[\begin{aligned}
+  Q(S_t,A_t) &\leftarrow Q(S_t,A_t) + \alpha\big[R_{t+1} + \gamma Q(S_{t+1},A_{t+1}) - Q(S_t,A_t)\big] \\
+  &= (1-\alpha)\, Q(S_t,A_t) + \alpha\big[R_{t+1} + \gamma Q(S_{t+1},A_{t+1})\big]
+  \end{aligned}\]</div>
+  <ul>
+    <li>두 항의 <b>가중합</b></li>
+    <li>\(\alpha\): 학습률(learning rate) / 스텝 크기(step size)
+      <ul><li>\(\alpha = 0\): 아무것도 배우지 않음</li><li>\(\alpha = 1\): 가장 최근 정보만 고려</li></ul></li>
+  </ul>
+</section>
+
+<section class="card" id="sarsa-gpi" data-toc="SARSA = TD 제어">
+  <h2>SARSA vs Monte Carlo Control</h2>
+  <span class="slide-ref">p.18</span>
+  <div class="cols">
+    <div class="box"><h4>SARSA</h4>
+      <ul><li><b>매 타임스텝마다</b></li><li>평가: TD, \(Q \approx q_\pi\)</li><li>개선: ε-greedy 정책 개선</li></ul></div>
+    <div class="box"><h4>Monte Carlo Control</h4>
+      <ul><li><b>매 에피소드마다</b></li><li>평가: MC 정책 평가, \(Q \approx q_\pi\)</li><li>개선: ε-greedy 정책 개선</li></ul></div>
+  </div>
+<pre class="code"><span class="c"># SARSA (on-policy TD control)</span>
+Q = defaultdict(<span class="k">lambda</span>: 0)
+<span class="k">for</span> episode <span class="k">in</span> range(N):
+    S = env.reset();  A = eps_greedy(Q, S)
+    <span class="k">while</span> <span class="k">not</span> done:
+        S2, R, done = env.step(A)
+        A2 = eps_greedy(Q, S2)                        <span class="c"># 다음 행동을 실제로 먼저 고르고</span>
+        target = R <span class="k">if</span> done <span class="k">else</span> R + gamma * Q[S2, A2]   <span class="c"># 그 행동의 Q 로 타깃</span>
+        Q[S, A] += alpha * (target - Q[S, A])
+        S, A = S2, A2                                  <span class="c"># 고른 A2 를 그대로 실행</span></pre>
+</section>
+
+<section class="card" id="sarsa-conv" data-toc="SARSA 수렴 조건">
+  <h2>Convergence of SARSA</h2>
+  <span class="slide-ref">p.19</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>SARSA는 다음 조건에서 최적 행동가치함수로 수렴한다, \(Q(s,a) \to q_*(s,a)\):</p>
+    <ul>
+      <li>정책 수열 \(\pi_t(a\mid s)\)가 <b>GLIE</b></li>
+      <li>스텝 크기 \(\alpha_t\)가 <b>Robbins-Monro</b> 수열:
+        <div class="eq">\[\sum_{t=1}^{\infty} \alpha_t = \infty, \qquad \sum_{t=1}^{\infty} \alpha_t^2 \lt \infty\]</div></li>
+    </ul>
+  </div>
+  <div class="note"><span class="hand">Robbins-Monro 직관</span>첫째 조건: 스텝 합이 무한 → 초기값이 아무리 멀어도 도달할 수 있을 만큼 충분히 움직임. 둘째 조건: 스텝이 충분히 빨리 작아짐 → 노이즈가 결국 사라져 한 점에 수렴. 예: \(\alpha_t = 1/t\) ✓, 상수 α ✗(둘째 조건 위반).</div>
+</section>
+
+<section class="card" id="sarsa-ex" data-toc="예: 3×3 격자 SARSA">
+  <h2>Example of SARSA <span class="ko">3×3 격자</span></h2>
+  <span class="slide-ref">p.20 – 25</span>
+  <p>5장과 같은 3×3 격자 (목표 9, 목표 도달 0 / 그 외 −1, \(\gamma=0.9\)), <b>\(\alpha = 0.1\)</b>, 초기 \(Q = 0\).</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>sample</th><th>S</th><th>A</th><th class="num">R</th><th>S′</th><th>A′</th><th>업데이트</th></tr></thead>
+    <tbody>
+      <tr><td>1st</td><td>1</td><td>D</td><td class="num">−1</td><td>4</td><td>D</td><td>\(Q(1,D) = 0 + 0.1(-1 + 0.9\cdot 0 - 0) = -0.1\)</td></tr>
+      <tr><td>2nd</td><td>4</td><td>D</td><td class="num">−1</td><td>7</td><td>R</td><td>\(Q(4,D) = -0.1\)</td></tr>
+      <tr><td>3rd</td><td>7</td><td>R</td><td class="num">−1</td><td>8</td><td>R</td><td>\(Q(7,R) = -0.1\)</td></tr>
+      <tr><td>4th</td><td>8</td><td>R</td><td class="num">0</td><td>9</td><td>None</td><td>\(Q(8,R) = 0 + 0.1(0 - 0) = 0\) (종료 상태라 \(Q(S',\cdot)=0\))</td></tr>
+      <tr><td>5th</td><td>1</td><td>R</td><td class="num">−1</td><td>2</td><td>R</td><td>\(Q(1,R) = -0.1\)</td></tr>
+    </tbody>
+  </table></div>
+  <p>MC와 달리 <b>한 스텝마다</b> 바로 업데이트돼요. 대신 한 번에 아주 조금씩(α=0.1) 움직여요.</p>
+</section>
+
+<h2 class="part-title"><small>part 3</small>q-learning</h2>
+
+<section class="card" id="qlearning" data-toc="Q-learning">
+  <h2>Q-Learning</h2>
+  <span class="slide-ref">p.27 – 28</span>
+  <div class="cols">
+    <div class="box"><h4>SARSA ← 벨만 <u>기대</u> 방정식</h4>
+      <div class="eq">\[q_\pi(s,a) = \sum_{s'} p(s'\mid s,a)\Big[r + \gamma \sum_{a'} \pi(a'\mid s') q_\pi(s',a')\Big]\]</div>
+      <div class="eq">\[Q(s,a) \leftarrow Q(s,a) + \alpha\big[R + \gamma Q(s',a') - Q(s,a)\big]\]</div></div>
+    <div class="box"><h4>Q-learning ← 벨만 <u>최적</u> 방정식</h4>
+      <div class="eq">\[q_*(s,a) = \sum_{s'} p(s'\mid s,a)\Big[r + \gamma \max_{a'} q_*(s',a')\Big]\]</div>
+      <div class="eq">\[Q(s,a) \leftarrow Q(s,a) + \alpha\big[R + \gamma \max_{a'} Q(s',a') - Q(s,a)\big]\]</div></div>
+  </div>
+  <p>DP에서 “정책 평가 ↔ 가치 이터레이션”이 기대/최적 방정식에서 나왔듯, 샘플링 버전은 “SARSA ↔ Q-learning”.</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th></th><th>Expectation</th><th>Optimality</th></tr></thead>
+    <tbody>
+      <tr><td>Bellman equation (full backup, DP)</td><td>Iterative Policy Evaluation</td><td>Value Iteration</td></tr>
+      <tr><td>Sampling (sample backup, TD)</td><td><b>SARSA</b></td><td><b>Q-learning</b></td></tr>
+    </tbody>
+  </table></div>
+  <div data-widget="tdupdate"></div>
+</section>
+
+<section class="card" id="target-behavior" data-toc="Target vs Behavior Policy">
+  <h2>Target Policy &amp; Behavior Policy</h2>
+  <span class="slide-ref">p.30 – 31</span>
+  <div class="cols">
+    <div class="box"><h4>Target Policy (타깃 정책)</h4>
+      <ul><li>에이전트가 <b>배우려는</b> 정책</li><li>에이전트는 이 정책의 가치함수를 학습</li></ul></div>
+    <div class="box"><h4>Behavior Policy (행동 정책)</h4>
+      <ul><li>에이전트가 실제로 행동을 고르고 <b>샘플을 생성</b>하는 데 쓰는 정책</li></ul></div>
+  </div>
+  <p>SARSA의 타깃 \(R + \gamma Q(s',a')\)에서 \(a'\)는 ε-greedy로 뽑은 행동 → 타깃 정책 = ε-greedy. Q-learning의 타깃 \(R + \gamma \max_{a'}Q(s',a')\) → 타깃 정책 = <b>그리디</b>.</p>
+</section>
+
+<section class="card" id="sarsa-vs-q" data-toc="예: SARSA vs Q-learning 업데이트">
+  <h2>SARSA vs Q-Learning <span class="ko">같은 샘플, 다른 업데이트</span></h2>
+  <span class="slide-ref">p.32</span>
+  <p>위 3×3 예제에서 4번째 샘플 이후 Q: \(Q(1,D) = Q(4,D) = Q(7,R) = -0.1\), 나머지 0. 이제 5번째 샘플이 <b>S=1, A=D, R=−1, S′=4, A′=D</b>라면:</p>
+  <div class="cols">
+    <div class="box"><h4>SARSA</h4>
+      <div class="eq">\[\begin{aligned} Q(1,D) &\leftarrow -0.1 + 0.1\big[-1 + 0.9\,Q(4,D) - (-0.1)\big] \\ &= -0.1 + 0.1[-1 - 0.09 + 0.1] = -0.199 \end{aligned}\]</div>
+      <p style="font-size:15px">실제로 고른 A′=D의 Q(4,D)=−0.1 사용</p></div>
+    <div class="box"><h4>Q-learning</h4>
+      <div class="eq">\[\begin{aligned} Q(1,D) &\leftarrow -0.1 + 0.1\big[-1 + 0.9\max_a Q(4,a) - (-0.1)\big] \\ &= -0.1 + 0.1[-1 + 0 + 0.1] = -0.19 \end{aligned}\]</div>
+      <p style="font-size:15px">상태 4에서 가장 좋은 Q 값(0, 아직 안 가 본 행동) 사용</p></div>
+  </div>
+</section>
+
+<section class="card" id="q-conv" data-toc="Q-learning 수렴 조건">
+  <h2>Convergence of Q-Learning</h2>
+  <span class="slide-ref">p.33</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>Q-learning은 다음 조건에서 최적 행동가치함수로 수렴한다, \(Q(s,a) \to q_*(s,a)\):</p>
+    <ul>
+      <li>(행동) 정책 수열 \(\pi_t(a\mid s)\)가 GLIE</li>
+      <li>스텝 크기가 Robbins-Monro: \(\sum_t \alpha_t = \infty,\ \sum_t \alpha_t^2 \lt \infty\)</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card" id="on-off" data-toc="On-policy vs Off-policy">
+  <h2>On-Policy vs Off-Policy</h2>
+  <span class="slide-ref">p.34 – 35</span>
+  <div class="cols">
+    <div class="box"><h4>On-Policy (SARSA)</h4>
+      <ul>
+        <li>Target policy = Behavior policy</li>
+        <li>\(Q(s,a)\) 업데이트 시 타깃 \(R + \gamma Q(s',a')\)는 행동 정책(ε-greedy)으로 \(s'\)에서 고른 \(a'\)를 사용</li>
+        <li>업데이트 후, 에이전트는 (그 \(a'\)를 그대로) 행동 정책으로 \(s'\)에서 행동</li>
+      </ul>
+      <p><b>장점</b>: 학습 과정이 안정적<br><b>단점</b>: 샘플 비효율, 느린 수렴</p></div>
+    <div class="box"><h4>Off-Policy (Q-learning)</h4>
+      <ul>
+        <li>Target policy ≠ Behavior policy</li>
+        <li>\(Q(s,a)\) 업데이트 시 타깃 \(R + \gamma \max_a Q(s',a)\)는 \(Q(s',a)\)를 최대화하는 \(a\)를 사용</li>
+        <li>업데이트 후, 에이전트는 행동 정책(ε-greedy)으로 \(s'\)에서 새로 행동을 고름</li>
+      </ul>
+      <p><b>장점</b>: 샘플 효율적, 빠른 수렴<br><b>단점</b>: 학습 과정이 불안정</p></div>
+  </div>
+</section>
+
+<section class="card" id="cliff" data-toc="Cliff Walking 예제">
+  <h2>On-Policy vs Off-Policy: Cliff Walking</h2>
+  <span class="slide-ref">p.36 – 39</span>
+  <p>START에서 GOAL까지 가는 가장 좋은 방법은?</p>
+  <ul>
+    <li>State: 위치 (4×12 격자), Action: 상하좌우</li>
+    <li>Cliff: 맨 아래 줄에서 Start와 Goal 사이의 칸들</li>
+    <li>Reward: 절벽에 빠지면 −100 (그리고 Start로 돌아감), 그 외 모든 전이 −1</li>
+  </ul>
+  <p><b>도전 과제</b>: 떨어질 위험 / 안전성과 최적성 사이의 트레이드오프</p>
+  <div class="cols">
+    <div class="box"><h4>Q-learning (Off-policy)</h4>
+      <ul><li>최적 정책에 집중, 목표까지 스텝 수를 최소화하려 함</li>
+      <li>위험이 더 크더라도 <b>절벽 바로 옆의 최단 경로</b>를 학습할 가능성이 높음</li></ul></div>
+    <div class="box"><h4>SARSA (On-policy)</h4>
+      <ul><li>현재 정책에 집중, <b>탐험 행동까지 학습에 반영</b></li>
+      <li>절벽 근처에서 위험한 탐험으로 인한 큰 페널티를 피해, <b>절벽에서 먼 안전한 경로</b>를 학습할 가능성이 높음</li></ul></div>
+  </div>
+  <div data-widget="cliff"></div>
+<div data-anim="cliffwalk"></div>
+</section>
+
+<h2 class="part-title"><small>part 4</small>extension of td</h2>
+
+<section class="card" id="nstep" data-toc="n-step TD">
+  <h2>n-Step TD</h2>
+  <span class="slide-ref">p.41 – 42</span>
+  <p>TD 타깃이 \(n\)스텝 미래까지 보게 하자! (TD = 1-step, MC = ∞-step)</p>
+  <div class="eq">\[\begin{aligned}
+  n=1\ \text{(TD)}: &\quad G_t^{(1)} = R_{t+1} + \gamma V(S_{t+1}) \\
+  n=2: &\quad G_t^{(2)} = R_{t+1} + \gamma R_{t+2} + \gamma^2 V(S_{t+2}) \\
+  &\quad\vdots \\
+  n=\infty\ \text{(MC)}: &\quad G_t^{(\infty)} = R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{T-1} R_T
+  \end{aligned}\]</div>
+  <div class="label"><span class="tag">definition · n-step return</span>
+    <div class="eq">\[G_t^{(n)} = R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1}R_{t+n} + \gamma^n V(S_{t+n})\]</div>
+  </div>
+  <p><b>n-step TD learning</b>:</p>
+  <div class="eq">\[V(S_t) \leftarrow V(S_t) + \alpha\big(G_t^{(n)} - V(S_t)\big)\]</div>
+</section>
+
+<section class="card" id="avg-nstep" data-toc="n-step 리턴 평균내기">
+  <h2>Averaging n-Step Returns</h2>
+  <span class="slide-ref">p.43</span>
+  <ul>
+    <li>서로 다른 \(n\)의 n-step 리턴을 평균 낼 수 있다.</li>
+    <li><b>Complex backup</b>: 더 단순한 백업들을 평균한 백업. 예) 2-step과 4-step 리턴의 평균 \(\tfrac12 G^{(2)} + \tfrac12 G^{(4)}\)</li>
+    <li>모든 타임스텝의 정보를 <b>효율적으로</b> 합칠 수는 없을까? → TD(λ)</li>
+  </ul>
+</section>
+
+<section class="card" id="tdlambda" data-toc="TD(λ): λ-return (forward view)">
+  <h2>TD(λ) <span class="ko">λ-return, forward view</span></h2>
+  <span class="slide-ref">p.44</span>
+  <p>\(\lambda\)-리턴 \(G_t^\lambda\)는 모든 n-step 리턴 \(G_t^{(n)}\)을 가중치 \((1-\lambda)\lambda^{n-1}\)로 합친 것 (\(0 \le \lambda \le 1\)):</p>
+  <div class="eq">\[G_t^\lambda = (1-\lambda)\sum_{n=1}^{\infty}\lambda^{n-1} G_t^{(n)} = (1-\lambda)\sum_{n=1}^{T-t-1}\lambda^{n-1}G_t^{(n)} + \lambda^{T-t-1}G_t\]</div>
+  <p>(에피소드가 \(T\)에서 끝나면 \(n \ge T-t\)인 모든 n-step 리턴이 실제 리턴 \(G_t\)와 같아서 그 가중치들이 \(\lambda^{T-t-1}\)로 모임.)</p>
+  <p><b>Forward-view TD(λ)</b>:</p>
+  <div class="eq">\[V(S_t) \leftarrow V(S_t) + \alpha\big(\underbrace{G_t^\lambda - V(S_t)}_{\lambda\text{-error}}\big)\]</div>
+  <p>\(\text{TD}(0) = \text{TD}\), \(\text{TD}(1) = \text{MC}\)</p>
+  <div data-widget="lambda"></div>
+  <div class="note"><span class="hand">근데 문제가…</span>Forward view는 \(G_t^\lambda\)를 계산하려면 결국 미래를 다 봐야 해서 MC처럼 에피소드 끝까지 기다려야 해요 → backward view로 해결!</div>
+</section>
+
+<section class="card" id="backward-ep" data-toc="Backward view: episodic">
+  <h2>Backward View of TD(λ): Episodic Task</h2>
+  <span class="slide-ref">p.45</span>
+  <p>TD 오차: \(\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\). λ-오차를 펼쳐서 정리하면</p>
+  <div class="eq">\[\begin{aligned}
+  G_t^\lambda - V(S_t) = -V(S_t) &+ (1-\lambda)\lambda^0\,[R_{t+1} + \gamma V(S_{t+1})] \\
+  &+ (1-\lambda)\lambda^1\,[R_{t+1} + \gamma R_{t+2} + \gamma^2 V(S_{t+2})] \\
+  &+ (1-\lambda)\lambda^2\,[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \gamma^3 V(S_{t+3})] + \cdots \\
+  &+ \lambda^{T-t-1}\,[R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{T-t-1}R_T]
+  \end{aligned}\]</div>
+  <p>보상 \(R_{t+k}\)끼리, \(V(S_{t+k})\)끼리 모으면 (\(R_{t+k}\)의 계수는 \((\gamma\lambda)^{k-1}\), \(V(S_{t+k})\)는 \(+(\gamma\lambda)^{k-1}\gamma\)와 \(-(\gamma\lambda)^{k}\) 두 번 나옴):</p>
+  <div class="eq">\[\begin{aligned}
+  &= (\gamma\lambda)^0\,[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)] \\
+  &\quad+ (\gamma\lambda)^1\,[R_{t+2} + \gamma V(S_{t+2}) - V(S_{t+1})] \\
+  &\quad+ \cdots + (\gamma\lambda)^{T-t-1}\,[R_T + \gamma V(S_T) - V(S_{T-1})] \\
+  &= \delta_t + (\gamma\lambda)\delta_{t+1} + (\gamma\lambda)^2\delta_{t+2} + \cdots + (\gamma\lambda)^{T-t-1}\delta_{T-1} \\
+  &= \sum_{k=t}^{T-1}(\gamma\lambda)^{k-t}\delta_k = \sum_{k=t}^{T}(\gamma\lambda)^{k-t}\delta_k \quad (\delta_T = 0)
+  \end{aligned}\]</div>
+  <div class="label thm"><span class="tag">key result</span>
+    <p>λ-오차 = 앞으로 나올 TD 오차들의 \((\gamma\lambda)\)-할인 합. 즉 미래 대신 <b>매 스텝 나오는 TD 오차 \(\delta_k\)를 과거 상태들에 나눠 주면</b> 같은 결과!</p>
+  </div>
+</section>
+
+<section class="card" id="backward-cont" data-toc="Backward view: continuous">
+  <h2>Backward View of TD(λ): Continuous Task</h2>
+  <span class="slide-ref">p.46</span>
+  <p>종료가 없는 경우도 똑같이 무한히 펼쳐서 정리하면:</p>
+  <div class="eq">\[G_t^\lambda - V(S_t) = \delta_t + (\gamma\lambda)\delta_{t+1} + (\gamma\lambda)^2\delta_{t+2} + \cdots = \sum_{k=t}^{\infty}(\gamma\lambda)^{k-t}\delta_k\]</div>
+</section>
+
+<section class="card" id="trace" data-toc="Eligibility Trace">
+  <h2>Eligibility Trace <span class="ko">적격 흔적</span></h2>
+  <span class="slide-ref">p.47</span>
+  <p>각 상태가 지금 나온 TD 오차에 대해 “얼마나 책임이 있는지”를 기록하는 값 \(E_t(s) \in \R^+\).</p>
+  <ul>
+    <li>초기값은 0: \(E_0(s) = 0,\ \forall s \in \S\)</li>
+    <li>매 스텝, 방문하지 않은 모든 상태의 trace는 \(\gamma\lambda\)배로 감쇠: \(E_t(s) = \gamma\lambda E_{t-1}(s),\ \forall s \ne S_t\)</li>
+    <li>시각 \(t\)에 방문한 상태 \(S_t\)의 trace: \(E_t(S_t) = \gamma\lambda E_{t-1}(S_t) + 1\)</li>
+    <li>\(\lambda\): trace-decay parameter</li>
+  </ul>
+  <p>한 줄로: \(E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t = s)\). 그리고 <b>backward TD(λ)</b>는 매 스텝 모든 상태를</p>
+  <div class="eq">\[V(s) \leftarrow V(s) + \alpha\,\delta_t\,E_t(s), \quad \forall s\]</div>
+  <p>로 업데이트해요. 최근에 자주 방문한 상태일수록 큰 몫을 받아요 (빈도 + 최근성 휴리스틱).</p>
+<div data-anim="trace"></div>
+</section>
+
+<section class="card" id="fwd-bwd" data-toc="Forward = Backward">
+  <h2>Forwards and Backwards TD(λ) <span class="ko">둘은 같다</span></h2>
+  <span class="slide-ref">p.48</span>
+  <p>상태 \(s\)가 에피소드 중 시각 \(k\)에 <b>한 번</b> 방문되었다고 하면, trace는 방문 이후 시간을 할인해요:</p>
+  <div class="eq">\[E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t = s) = \begin{cases} 0 & \text{if } t \lt k \\ (\gamma\lambda)^{t-k} & \text{if } t \ge k \end{cases}\]</div>
+  <p>Backward TD(λ)의 업데이트를 에피소드 동안 누적하면:</p>
+  <div class="eq">\[\sum_{t=1}^{T}\alpha\,\delta_t\,E_t(s) = \alpha\sum_{t=k}^{T}(\gamma\lambda)^{t-k}\delta_t = \alpha\big(G_k^\lambda - V(S_k)\big)\]</div>
+  <ul>
+    <li>에피소드가 끝날 때 backward view는 λ-리턴의 총 오차를 정확히 누적한다 → forward view와 동일!</li>
+    <li>같은 상태 \(s\)를 여러 번 방문하면 \(E_t(s)\)가 여러 오차를 누적한다 (accumulating trace).
+      <ul><li><b>Replacing eligibility trace</b>: \(E_t(s) = \mathbf{1}(S_t = s)\) 처럼 방문 시 1로 리셋하는 변형</li></ul></li>
+  </ul>
+</section>
+
+<section class="card" id="sarsa-lambda" data-toc="SARSA(λ) & Watkins Q(λ)">
+  <h2>SARSA(λ) and Watkins’s Q(λ)</h2>
+  <span class="slide-ref">p.49 – 50</span>
+  <div class="cols">
+    <div>
+<pre class="code"><span class="c"># SARSA(λ)</span>
+init Q(s,a) arbitrarily
+<span class="k">repeat</span> (each episode):
+  E(s,a) = 0  for all s,a
+  init S, A
+  <span class="k">repeat</span> (each step):
+    take A, observe R, S'
+    choose A' from S' (ε-greedy on Q)
+    δ ← R + γQ(S',A') − Q(S,A)
+    E(S,A) ← E(S,A) + 1        <span class="c"># accumulating</span>
+    <span class="c">#  or (1−α)E(S,A) + 1       dutch</span>
+    <span class="c">#  or 1                    replacing</span>
+    <span class="k">for</span> all s, a:
+      Q(s,a) ← Q(s,a) + αδE(s,a)
+      E(s,a) ← γλE(s,a)
+    S ← S'; A ← A'
+  <span class="k">until</span> S is terminal</pre></div>
+    <div>
+<pre class="code"><span class="c"># Watkins's Q(λ)</span>
+init Q(s,a) arbitrarily
+<span class="k">repeat</span> (each episode):
+  E(s,a) = 0  for all s,a
+  init S, A
+  <span class="k">repeat</span> (each step):
+    take A, observe R, S'
+    choose A' from S' (ε-greedy on Q)
+    A* ← argmax_a Q(S',a)
+         (A' 가 동점이면 A* ← A')
+    δ ← R + γQ(S',A*) − Q(S,A)
+    E(S,A) ← E(S,A) + 1   (or dutch/replacing)
+    <span class="k">for</span> all s, a:
+      Q(s,a) ← Q(s,a) + αδE(s,a)
+      <span class="k">if</span> A' = A*: E(s,a) ← γλE(s,a)
+      <span class="k">else</span>:       E(s,a) ← 0     <span class="c"># 탐험하면 trace 끊기</span>
+    S ← S'; A ← A'
+  <span class="k">until</span> S is terminal</pre></div>
+  </div>
+  <div class="note"><span class="hand">Watkins Q(λ)의 포인트</span>Q-learning의 타깃 정책은 그리디. 그래서 행동 정책이 그리디가 아닌 <b>탐험 행동</b>(A′ ≠ A*)을 하면, 그 뒤의 경험은 타깃 정책의 경험이 아니므로 trace를 0으로 끊어요.</div>
+</section>
+
+<section class="card tint" id="quiz06" data-toc="셀프 체크 퀴즈">
+  <h2>Self-check <span class="ko">스스로 확인하기</span></h2>
+  <details class="quiz"><summary>TD target과 TD error를 식으로 쓰면?</summary>
+    <div class="ans">TD target: \(R_{t+1} + \gamma V(S_{t+1})\). TD error: \(\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\).</div></details>
+  <details class="quiz"><summary>MC는 편향 0·높은 분산, TD는 약간의 편향·낮은 분산인 이유는?</summary>
+    <div class="ans">MC의 \(G_t\)는 실제 리턴이라 불편이지만 많은 무작위 사건의 합이라 분산이 큼. TD 타깃은 추정치 \(V(S_{t+1})\)를 써서(부트스트래핑) 편향이 생기지만 무작위 사건 하나에만 의존해 분산이 작음.</div></details>
+  <details class="quiz"><summary>AB 예제에서 batch MC와 batch TD의 V(A)는?</summary>
+    <div class="ans">MC: 0 (관측된 리턴 평균), TD: 0.75 (추정 MDP에서 A→B, V(B)=0.75).</div></details>
+  <details class="quiz"><summary>SARSA와 Q-learning의 타깃 차이 한 줄 요약?</summary>
+    <div class="ans">SARSA: 실제로 고른 다음 행동의 \(Q(S',A')\). Q-learning: 다음 상태의 최대 \(\max_a Q(S',a)\).</div></details>
+  <details class="quiz"><summary>Cliff Walking에서 Q-learning이 학습 중 평균 보상이 더 낮은 이유는?</summary>
+    <div class="ans">절벽 바로 옆 최단 경로(최적)를 학습하지만 실제 행동은 ε-greedy라 가끔 탐험하다 절벽에 떨어져 −100을 받음. SARSA는 탐험까지 고려해 안전한 경로를 택함.</div></details>
+  <details class="quiz"><summary>Robbins-Monro 조건은? 상수 α는 만족하나요?</summary>
+    <div class="ans">\(\sum \alpha_t = \infty\), \(\sum \alpha_t^2 \lt \infty\). 상수 α는 \(\sum\alpha^2 = \infty\)라 두 번째 조건을 만족하지 않음.</div></details>
+  <details class="quiz"><summary>TD(0)와 TD(1)은 각각 무엇과 같나요?</summary>
+    <div class="ans">TD(0) = 1-step TD, TD(1) = MC.</div></details>
+  <details class="quiz"><summary>Eligibility trace 업데이트 식은?</summary>
+    <div class="ans">\(E_0(s)=0\), \(E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t=s)\). 그리고 \(V(s) \leftarrow V(s) + \alpha\delta_t E_t(s)\).</div></details>
+</section>
+
+<nav class="ch-nav"></nav>
+    </main>
+  </div>
+</div>
+</body>
+</html>

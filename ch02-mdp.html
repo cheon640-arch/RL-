@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02. Finite MDP — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/widgets.js"></script>
+<script defer src="assets/anim.js"></script>
+<script defer src="assets/notes.js"></script>
+</head>
+<body data-ch="02">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">lecture 02 · 강화학습의 언어 배우기</span>
+    <h1 class="display">finite markov<br>decision processes</h1>
+    <p class="lede">강화학습 문제를 수학으로 적는 표준 틀이 바로 <span class="mk">MDP</span>예요. 확률과정 → 마르코프 체인 → MRP → MDP 순서로 하나씩 재료를 더해 가고, 마지막엔 에이전트를 이루는 정책·가치함수·모델까지 정리해요.</p>
+    <div class="meta">원본: 02.Markov_Decision_Processes.pdf (31 slides) · Hyelim Shin, PNU IE · 일부 슬라이드는 David Silver RL 강의 기반</div>
+    <div data-sticker="bolt" data-rot="12" style="right:6%;top:60px;width:70px;height:92px"></div>
+    <div data-sticker="apple" data-rot="-8" style="right:16%;top:190px;width:76px;height:82px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<!-- ===================== PART 1 ===================== -->
+<h2 class="part-title"><small>part 1</small>introduction to mdp</h2>
+
+<section class="card" id="sp" data-toc="확률과정">
+  <h2>Stochastic Process <span class="ko">확률과정</span></h2>
+  <span class="slide-ref">p.2</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>확률과정(stochastic process, SP)</b>은 확률변수들의 무한한 모음(collection)이다.</p>
+    <ul>
+      <li>이산시간 SP: \(\{X_n,\ n = 0,1,2,\dots\}\)</li>
+      <li>연속시간 SP: \(\{X(t),\ t \ge 0\}\)</li>
+    </ul>
+  </div>
+  <p>즉, “시간에 따라 값이 랜덤하게 변하는 것”을 시간 인덱스가 붙은 확률변수들의 줄로 표현한 거예요.</p>
+  <h3>예시</h3>
+  <ul>
+    <li>\(X_n\) = \(n\)일째의 최고 기온 (이산)</li>
+    <li>\(X(t)\) = 시각 \(t\)에 대기열에 있는 고객 수 (연속)</li>
+    <li>\(X_n\) = \(n\)일째 수업에 출석한 학생 수</li>
+    <li>\(X_n\) = 매일 장 마감 시점의 내 주식 가치</li>
+    <li>\(X(t)\) = 시각 \(t\)의 강의실 온도</li>
+    <li>\(X(t)\) = 어떤 실험에서 직선 위 점 \(t\)에서의 최고 온도 (여기서 \(t\)는 시간이 아니라 위치! 인덱스가 꼭 시간일 필요는 없음)</li>
+  </ul>
+</section>
+
+<section class="card" id="mc" data-toc="상태공간 & 마르코프 체인">
+  <h2>State Space &amp; Markov Chain <span class="ko">상태공간과 마르코프 체인</span></h2>
+  <span class="slide-ref">p.3</span>
+  <div class="label"><span class="tag">definition</span>
+    <ul>
+      <li>\(X_n\) (또는 \(X(t)\))을 시각 \(n\)(또는 \(t\))에서 SP의 <b>상태(state)</b>라고 한다.</li>
+      <li>확률변수 \(X_n\)이 가질 수 있는 모든 값의 집합을 SP의 <b>상태공간(state space)</b>이라고 한다.</li>
+    </ul>
+  </div>
+  <div class="label"><span class="tag">definition</span>
+    <p>가산(countable) 상태공간을 가지는 이산시간 SP \(\{X_n\}\)가 다음을 만족하면 <b>마르코프 체인(Markov chain)</b>이라 한다.</p>
+    <div class="eq">\[P(X_{n+1}=j \mid X_n=i, X_{n-1}=i_{n-1},\dots,X_0=i_0) = P(X_{n+1}=j \mid X_n=i)\]</div>
+  </div>
+  <div class="note"><span class="hand">해석하면?</span>
+    <ul>
+      <li>가장 최근 상태 하나만 알면 미래를 예측할 수 있다 (그 이전 상태들은 필요 없다).</li>
+      <li>과거 상태들과 현재 상태가 주어졌을 때, 미래 상태의 조건부 분포는 과거와 무관하고 <b>현재 상태에만</b> 의존한다.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card" id="tm" data-toc="전이확률 행렬">
+  <h2>State Transition Matrix <span class="ko">상태 전이 행렬</span></h2>
+  <span class="slide-ref">p.4</span>
+  <div class="label"><span class="tag">definition</span>
+    <p>한 단계(one-step) 전이확률은</p>
+    <div class="eq">\[P_{ss'} = P(X_{n+1}=s' \mid X_n = s)\]</div>
+  </div>
+  <ul>
+    <li>각 행의 합은 1이어야 한다: \(\sum_{s'} P_{ss'} = 1,\ \forall s\) (어디론가는 반드시 가니까)</li>
+    <li>한 단계 전이확률들을 모은 행렬을 \(P\)라고 쓴다.</li>
+  </ul>
+  <div class="eq">\[P \equiv \begin{bmatrix} P_{00} & P_{01} & P_{02} & \cdots \\ P_{10} & P_{11} & P_{12} & \cdots \\ \vdots & \vdots & \vdots & \ddots \end{bmatrix}\]</div>
+  <h3>예시: Random Walk</h3>
+  <p>상태공간이 정수 \(i = 0, \pm1, \pm2, \dots\)인 마르코프 체인이 어떤 \(0 \lt p \lt 1\)에 대해</p>
+  <div class="eq">\[P_{i,i+1} = p = 1 - P_{i,i-1}\]</div>
+  <p>를 만족하면 <b>랜덤 워크</b>라고 한다. 매 단계 확률 \(p\)로 오른쪽, \(1-p\)로 왼쪽으로 한 칸 이동하는 것.</p>
+</section>
+
+<section class="card" id="mp" data-toc="Markov Process (택시)">
+  <h2>Markov Process <span class="ko">마르코프 과정</span></h2>
+  <span class="slide-ref">p.5</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>마르코프 과정(Markov Process, = Markov Chain)</b>은 튜플 \(\langle \S, \P \rangle\)이다.</p>
+    <ul>
+      <li>\(\S\): (유한한) 상태들의 집합 (state space)</li>
+      <li>\(\P\): 상태 전이 확률 행렬, \(\P_{ss'} = P[S_{t+1}=s' \mid S_t = s]\)</li>
+    </ul>
+  </div>
+  <h3>예시: 택시 기사 (Taxi Driver)</h3>
+  <p>택시 기사가 손님을 태우며 돈을 버는 상황. 상태는 3개: <b>Airport, Seomyeon, Haeundae</b>.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 560 300" font-family="Geist, sans-serif" font-size="14">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2b1a07"/></marker></defs>
+      <g fill="#fdfbf9" stroke="#171717" stroke-width="1.5">
+        <circle cx="280" cy="70" r="40"/><circle cx="110" cy="240" r="40"/><circle cx="450" cy="240" r="40"/>
+      </g>
+      <g text-anchor="middle" fill="#2b1a07"><text x="280" y="75">Seomyeon</text><text x="110" y="245">Airport</text><text x="450" y="245">Haeundae</text></g>
+      <g fill="none" stroke="#2b1a07" stroke-width="1.4" marker-end="url(#ah)">
+        <path d="M262 108 L 140 205"/><path d="M128 200 L 248 100"/>
+        <path d="M298 108 L 420 205"/><path d="M432 200 L 312 100"/>
+        <path d="M150 232 L 410 232"/><path d="M410 252 L 150 252"/>
+        <path d="M262 32 C 240 -5, 320 -5, 298 32"/>
+        <path d="M72 226 C 30 210, 40 280, 80 268"/>
+        <path d="M488 226 C 530 210, 520 280, 480 268"/>
+      </g>
+      <g fill="#ce500a" font-family="JetBrains Mono, monospace" font-size="13">
+        <text x="270" y="12">0.2</text>
+        <text x="20" y="250">0.7</text><text x="512" y="250">0.4</text>
+        <text x="160" y="150">0.1 ↑</text><text x="208" y="178">0.3 ↓</text>
+        <text x="340" y="150">0.5 ↓</text><text x="370" y="178">↑ 0.2</text>
+        <text x="265" y="225">0.2 →</text><text x="265" y="272">← 0.4</text>
+      </g>
+    </svg>
+    <figcaption>각 행(나가는 화살표 확률)의 합 = 1</figcaption>
+  </figure>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>from \ to</th><th class="num">Airport</th><th class="num">Seomyeon</th><th class="num">Haeundae</th></tr></thead>
+    <tbody>
+      <tr><td>Airport</td><td class="num">0.7</td><td class="num">0.1</td><td class="num">0.2</td></tr>
+      <tr><td>Seomyeon</td><td class="num">0.3</td><td class="num">0.2</td><td class="num">0.5</td></tr>
+      <tr><td>Haeundae</td><td class="num">0.4</td><td class="num">0.2</td><td class="num">0.4</td></tr>
+    </tbody>
+  </table></div>
+<div data-anim="chain"></div>
+</section>
+
+<section class="card" id="mrp" data-toc="Markov Reward Process">
+  <h2>Markov Reward Process <span class="ko">마르코프 보상 과정</span></h2>
+  <span class="slide-ref">p.6</span>
+  <p class="hand">손님이 돈 낸 걸 어떻게 표현하지? → 보상(reward)을 추가!</p>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>MRP</b>는 튜플 \(\langle \S, \P, \Rc, \gamma \rangle\)이다.</p>
+    <ul>
+      <li>\(\S\): (유한한) 상태 집합</li>
+      <li>\(\P\): 상태 전이 확률 행렬, \(\P_{ss'} = P[S_{t+1}=s' \mid S_t=s]\)</li>
+      <li><b style="color:var(--sienna)">\(\Rc\): 보상 함수, \(\Rc_s = \E[R_{t+1} \mid S_t = s]\)</b></li>
+      <li><b style="color:var(--sienna)">\(\gamma\): 할인율(discount factor), \(\gamma \in [0,1]\)</b></li>
+    </ul>
+  </div>
+  <p>택시 예시에 보상을 붙이면: 같은 지역에 머무르면 \(-1\) (공치는 시간), 서면↔공항은 \(+10\), 서면↔해운대는 \(+5\), 공항↔해운대는 \(+20\) (장거리 손님).</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>from → to</th><th>확률, 보상</th></tr></thead>
+    <tbody>
+      <tr><td>Airport → Airport / Seomyeon / Haeundae</td><td>0.7, −1 &nbsp;/&nbsp; 0.1, +10 &nbsp;/&nbsp; 0.2, +20</td></tr>
+      <tr><td>Seomyeon → Seomyeon / Airport / Haeundae</td><td>0.2, −1 &nbsp;/&nbsp; 0.3, +10 &nbsp;/&nbsp; 0.5, +5</td></tr>
+      <tr><td>Haeundae → Haeundae / Seomyeon / Airport</td><td>0.4, −1 &nbsp;/&nbsp; 0.2, +5 &nbsp;/&nbsp; 0.4, +20</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" id="mdp-def" data-toc="MDP 정의 (택시+행동)">
+  <h2>Markov Decision Process <span class="ko">마르코프 결정 과정</span></h2>
+  <span class="slide-ref">p.7</span>
+  <p class="hand">만약 기사가 고객을 안 태우고 이동한다면? → 행동(action)을 추가!</p>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>MDP</b>는 튜플 \(\langle \S, \A, \P, \Rc, \gamma \rangle\)이다.</p>
+    <ul>
+      <li>\(\S\): 유한한 상태 집합</li>
+      <li><b style="color:var(--sienna)">\(\A\): 유한한 행동(action) 집합</b></li>
+      <li>\(\P\): 상태 전이 확률 행렬, \(\P^{a}_{ss'} = P[S_{t+1}=s' \mid S_t = s, A_t = a]\)</li>
+      <li>\(\Rc\): 보상 함수, \(\Rc^{a}_{s} = \E[R_{t+1} \mid S_t = s, A_t = a]\)</li>
+      <li>\(\gamma\): 할인율 \(\gamma \in [0,1]\)</li>
+    </ul>
+  </div>
+  <p>MRP와의 차이: 전이확률과 보상이 이제 <b>행동 \(a\)에도 의존</b>해요. 택시 기사는 두 종류 행동을 할 수 있어요.</p>
+  <ul>
+    <li><b>Wait</b>: 그 자리에서 손님을 기다림 → 위 MRP처럼 확률적으로 이동하며 보상</li>
+    <li><b>Move</b>: 빈 차로 다른 지역으로 이동 → 확정적으로 이동, 보상 \(-5\)</li>
+  </ul>
+  <div class="note"><span class="hand">필기 예시</span>
+    \(r(\text{Airport}, \text{Wait}) = 0.2 \times 20 + 0.1 \times 10 + 0.7 \times (-1) = 4.3\)
+  </div>
+  <div data-widget="taxi"></div>
+</section>
+
+<section class="card tint" id="why-mdp" data-toc="왜 MDP인가">
+  <h2>Introduction to MDPs <span class="ko">왜 MDP인가</span></h2>
+  <span class="slide-ref">p.8</span>
+  <ul>
+    <li>MDP는 강화학습의 <b>환경(environment)</b>을 형식적으로 기술한다.</li>
+    <li>환경이 <b>완전 관측 가능(fully observable)</b>한 경우를 다룬다.</li>
+    <li>거의 모든 RL 문제는 MDP로 형식화할 수 있다.
+      <ul>
+        <li>최적 제어(optimal control)는 주로 연속 MDP를 다룬다.</li>
+        <li>부분 관측 문제(POMDP)도 MDP로 변환할 수 있다.</li>
+        <li>밴딧(Bandit) 문제는 상태가 하나인 MDP다.</li>
+      </ul>
+    </li>
+  </ul>
+</section>
+
+<!-- ===================== PART 2 ===================== -->
+<h2 class="part-title"><small>part 2</small>markov decision process</h2>
+
+<section class="card" id="seq" data-toc="순차적 결정·History·State">
+  <h2>Sequential Decision Process <span class="ko">순차적 의사결정</span></h2>
+  <span class="slide-ref">p.10 – 12</span>
+  <figure class="fig">
+    <svg viewBox="0 0 560 170" font-family="Geist, sans-serif" font-size="15">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ff6f1e"/></marker></defs>
+      <rect x="20" y="50" width="150" height="70" rx="12" fill="#fdfbf9" stroke="#171717" stroke-width="1.5"/>
+      <rect x="390" y="50" width="150" height="70" rx="12" fill="#f7efe9" stroke="#171717" stroke-width="1.5"/>
+      <text x="95" y="91" text-anchor="middle" fill="#2b1a07">Agent</text>
+      <text x="465" y="91" text-anchor="middle" fill="#2b1a07">Environment</text>
+      <path d="M170 60 C 260 10, 300 10, 390 60" fill="none" stroke="#ff6f1e" stroke-width="2" marker-end="url(#ah2)"/>
+      <path d="M390 110 C 300 160, 260 160, 170 110" fill="none" stroke="#ff6f1e" stroke-width="2" marker-end="url(#ah2)"/>
+      <text x="280" y="22" text-anchor="middle" font-family="Gaegu" font-size="20" fill="#ce500a">action Aₜ</text>
+      <text x="280" y="165" text-anchor="middle" font-family="Gaegu" font-size="20" fill="#ce500a">observation Oₜ₊₁, reward Rₜ₊₁</text>
+    </svg>
+  </figure>
+  <p>매 시점 \(t\)마다:</p>
+  <ul>
+    <li>에이전트가 관측 \(O_t\)와 보상 \(R_t\)를 받는다.</li>
+    <li>에이전트가 행동 \(A_t\)를 한다.</li>
+    <li>세계(환경)는 \(A_t\)를 받아 갱신되고, 관측 \(O_{t+1}\)과 보상 \(R_{t+1}\)을 내보낸다.</li>
+  </ul>
+  <h3>History</h3>
+  <p><b>히스토리</b>는 관측·행동·보상의 전체 수열: \(H_t = O_1, R_1, A_1, \dots, A_{t-1}, O_t, R_t\)</p>
+  <h3>State</h3>
+  <p><b>상태</b>는 다음에 무슨 일이 일어날지 결정하는 데 쓰는 정보로, 히스토리의 함수다: \(S_t = f(H_t)\)</p>
+  <div class="note"><span class="hand">포인트</span>히스토리 전체를 들고 다니면 너무 크니까, 미래 예측에 필요한 만큼만 요약한 것이 상태!</div>
+<div data-anim="loop"></div>
+</section>
+
+<section class="card" id="markov-prop" data-toc="마르코프 성질 & Finite MDP">
+  <h2>Markov Property <span class="ko">마르코프 성질</span></h2>
+  <span class="slide-ref">p.13</span>
+  <p class="hand" style="font-size:24px">“The future is independent of the past given the present”</p>
+  <div class="label"><span class="tag">definition</span>
+    <p>상태 \(S_t\)가 <b>마르코프</b>이다 ⟺</p>
+    <div class="eq">\[P[S_{t+1} \mid S_t, A_t] = P[S_{t+1} \mid S_1, A_1, \dots, S_t, A_t]\]</div>
+  </div>
+  <p><b>유한 MDP(Finite MDP)</b>란 마르코프 성질을 만족하는 순차적 의사결정 과정이다.</p>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>Finite MDP</b>는 튜플 \(\langle \S, \A, \P, \Rc, \gamma \rangle\):</p>
+    <ul>
+      <li>\(\S\) 유한 상태 집합, \(\A\) 유한 행동 집합</li>
+      <li>\(\P^{a}_{ss'} = P[S_{t+1}=s' \mid S_t=s, A_t=a]\)</li>
+      <li>\(\Rc^{a}_{s} = \E[R_{t+1} \mid S_t=s, A_t=a]\)</li>
+      <li>\(\gamma \in [0,1]\)</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card" id="timestep" data-toc="MDP의 타임스텝 (3가지 질문)">
+  <h2>Timestep of MDP <span class="ko">MDP 한 스텝</span></h2>
+  <span class="slide-ref">p.14, p.21</span>
+  <p>상태 \(S_t\)에서 에이전트가 행동 \(A_t\)를 하면 환경이 보상 \(R_{t+1}\)과 다음 상태 \(S_{t+1}\)을 준다:</p>
+  <div class="eq">\[S_0, A_0, R_1, S_1, A_1, R_2, S_2, \dots\]</div>
+  <p>그럼 자연스럽게 세 가지 질문이 생겨요. 이 장의 나머지가 이 질문에 대한 답이에요.</p>
+  <ol>
+    <li><b>상태는 어떻게 전이되나?</b> → 상태 전이 (State Transition)</li>
+    <li><b>보상은 어떻게 주어지나?</b> → 보상 함수 (Reward Function)</li>
+    <li><b>에이전트는 행동을 어떻게 고르나?</b> → 정책 (Policy) — Part 3</li>
+  </ol>
+</section>
+
+<section class="card" id="transition" data-toc="상태 전이 (메이플 강화)">
+  <h2>State Transition <span class="ko">상태 전이</span></h2>
+  <span class="slide-ref">p.15 – 16</span>
+  <div class="cols">
+    <div class="box"><h4>결정적 (Deterministic)</h4>
+      <p>상태 전이 <b>함수</b>로 다음 상태가 하나로 정해짐</p>
+      <div class="eq">\[s' = f(s, a)\]</div></div>
+    <div class="box"><h4>확률적 (Stochastic)</h4>
+      <p>상태 전이 <b>확률</b> (마르코프 성질 포함)</p>
+      <div class="eq">\[p(s' \mid s,a) = P[S_{t+1}=s' \mid S_t=s, A_t=a] = \P^{a}_{ss'}\]</div></div>
+  </div>
+  <h3>예시: 게임 장비 강화 (15성 → 16성)</h3>
+  <p>“강화(Enhancement)” 행동을 하면: 성공 30% → 16성, 실패(유지) 68% → 15성 그대로, 파괴 2% → Destruction.</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>\(\P\)</th><th class="num">Dest.</th><th class="num">…</th><th class="num">15</th><th class="num">16</th><th class="num">…</th></tr></thead>
+    <tbody>
+      <tr><td>Dest.</td><td class="num">–</td><td colspan="4"></td></tr>
+      <tr class="hl"><td>15</td><td class="num">0.02</td><td class="num">…</td><td class="num">0.68</td><td class="num">0.3</td><td class="num">…</td></tr>
+      <tr><td>16</td><td class="num">0.02</td><td class="num">…</td><td class="num">0</td><td class="num">0.68</td><td class="num">…</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" id="reward" data-toc="보상 가설 & 보상 함수">
+  <h2>Reward Function <span class="ko">보상 함수</span></h2>
+  <span class="slide-ref">p.17</span>
+  <div class="label thm"><span class="tag">reward hypothesis</span>
+    <p>“우리가 목표나 목적이라고 부르는 모든 것은, 받게 되는 스칼라 신호(=보상)의 누적합의 기댓값을 최대화하는 것으로 잘 표현될 수 있다.”</p>
+  </div>
+  <p>보상 함수는 두 가지 형태로 쓸 수 있어요.</p>
+  <div class="eq">\[r(s,a) = \E[R_{t+1} \mid S_t=s, A_t=a] = \Rc^{a}_{s} = \sum_{r} r \sum_{s'} p(s', r \mid s, a)\]</div>
+  <div class="eq">\[r(s,a,s') = \E[R_{t+1} \mid S_t=s, A_t=a, S_{t+1}=s'] = \sum_{r} r\,\frac{p(s', r \mid s,a)}{p(s' \mid s,a)}\]</div>
+  <p>강화 예시에서 보상을 “유지 0, 성공 +1, 파괴 −15”라고 하면:</p>
+  <div class="eq">\[r(15, \text{Enh.}) = 0.68 \times 0 + 0.3 \times 1 + 0.02 \times (-15) = 0\]</div>
+  <p class="hand">→ 기대 보상이 0! 강화할 이유가… 🤔</p>
+</section>
+
+<section class="card" id="return" data-toc="Return (할인 누적 보상)">
+  <h2>Returns <span class="ko">리턴</span></h2>
+  <span class="slide-ref">p.18</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>리턴 \(G_t\)</b>는 시점 \(t\)부터의 할인된 보상의 총합이다.</p>
+    <div class="eq">\[G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}\]</div>
+  </div>
+  <ul>
+    <li>할인율 \(\gamma \in [0,1]\)은 미래 보상의 <b>현재 가치</b>.</li>
+    <li>\(k+1\) 스텝 뒤에 받는 보상 \(R\)의 가치는 \(\gamma^k R\).</li>
+    <li>즉, 지연된 보상보다 즉각적인 보상을 더 높게 평가한다.
+      <ul><li>\(\gamma\)가 0에 가까우면 <b>“근시안적(myopic)”</b> 평가</li>
+      <li>\(\gamma\)가 1에 가까우면 <b>“원시안적(far-sighted)”</b> 평가</li></ul></li>
+  </ul>
+  <div data-widget="discount"></div>
+</section>
+
+<section class="card" id="episodic" data-toc="Episodic vs Continuing">
+  <h2>Episodic Task vs Continuous Task</h2>
+  <span class="slide-ref">p.19</span>
+  <div class="cols">
+    <div class="box"><h4>Episodic task</h4>
+      <ul><li>시작점과 끝점이 명확한 과제</li>
+      <li><b>에피소드</b>: 시작점부터 가장 가까운 종료점까지의 상태 수열</li>
+      <li>예: 체스 한 판, 미로 찾기, 정해진 목적지까지 자율주행</li></ul></div>
+    <div class="box"><h4>Continuous task</h4>
+      <ul><li>미리 정해진 끝이 없는 과제</li>
+      <li>\(\gamma \ne 1\) 이어야 함 (안 그러면 리턴이 발산)</li>
+      <li>예: 주식 트레이딩 에이전트, 공장 제어 시스템, 신호등 제어 (6장: 로봇 청소기)</li></ul></div>
+  </div>
+</section>
+
+<section class="card tint" id="why-discount" data-toc="왜 할인하나?">
+  <h2>Why discount? <span class="ko">왜 할인할까</span></h2>
+  <span class="slide-ref">p.20</span>
+  <ol>
+    <li>수학적으로 편리하다.</li>
+    <li>순환하는 마르코프 과정에서 리턴이 무한대가 되는 것을 막는다.</li>
+    <li>미래에 대한 불확실성을 반영한다.</li>
+    <li>보상이 금전이라면, 당장 받는 돈이 이자를 더 벌 수 있다.</li>
+    <li>동물/사람의 행동도 즉각적인 보상을 선호한다.</li>
+    <li>모든 수열이 종료된다면 할인하지 않는(\(\gamma=1\)) MRP를 쓰는 것도 가능하다.</li>
+  </ol>
+  <div class="note"><span class="hand">수식으로 확인</span>보상이 최대 \(R_{\max}\)로 유계이고 \(\gamma \lt 1\)이면 \(|G_t| \le \sum_k \gamma^k R_{\max} = \dfrac{R_{\max}}{1-\gamma}\) 로 유한!</div>
+</section>
+
+<!-- ===================== PART 3 ===================== -->
+<h2 class="part-title"><small>part 3</small>rl agent</h2>
+
+<section class="card" id="components" data-toc="RL 에이전트의 구성요소">
+  <h2>Major Components of an RL Agent <span class="ko">에이전트의 3요소</span></h2>
+  <span class="slide-ref">p.23</span>
+  <p class="hand" style="font-size:24px">“The agent’s job is to maximize cumulative reward”</p>
+  <div class="cols">
+    <div class="box"><h4>① Policy \(\pi: \S \to \A\)</h4>
+      <p>에이전트의 행동 함수 — 행동을 어떻게 고를지 결정.</p>
+      <ul><li>결정적 정책: \(\pi(s) = a\)</li><li>확률적 정책: \(\pi(a \mid s) = P[A_t=a \mid S_t=s]\)</li></ul></div>
+    <div class="box"><h4>② Value function \(v\)</h4>
+      <p>각 상태(및/또는 행동)가 얼마나 좋은지. 미래 보상에 대한 <b>예측</b>.</p></div>
+  </div>
+  <div class="box" style="margin-top:20px"><h4>③ Model</h4>
+    <p>에이전트가 가진 환경에 대한 표현 — 환경이 다음에 무엇을 할지 예측.</p>
+    <ul><li>Transitions: \(\P\)가 다음 상태를 예측</li><li>Rewards: \(\Rc\)가 다음 (즉각) 보상을 예측</li></ul></div>
+</section>
+
+<section class="card" id="policy" data-toc="정책 (Policy)">
+  <h2>Policies <span class="ko">정책</span></h2>
+  <span class="slide-ref">p.24</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>정책 \(\pi\)</b>는 상태가 주어졌을 때 행동에 대한 분포이다.</p>
+    <div class="eq">\[\pi(a \mid s) = P[A_t = a \mid S_t = s]\]</div>
+  </div>
+  <ul>
+    <li>정책은 에이전트의 행동을 완전히 정의한다.</li>
+    <li>MDP 정책은 (히스토리가 아니라) <b>현재 상태</b>에만 의존한다. → 마르코프 성질 덕분!</li>
+    <li>MDP의 목표는 누적 보상을 최대화하는 <b>최적 정책</b>을 찾는 것.</li>
+  </ul>
+</section>
+
+<section class="card" id="value" data-toc="가치함수 v, q">
+  <h2>Value Function <span class="ko">가치함수</span></h2>
+  <span class="slide-ref">p.25</span>
+  <div class="label"><span class="tag">definition · state-value</span>
+    <p>MDP의 <b>상태가치함수 \(v_\pi(s)\)</b>: 상태 \(s\)에서 시작해서 정책 \(\pi\)를 따를 때의 기대 리턴</p>
+    <div class="eq">\[v_\pi(s) = \E_\pi[G_t \mid S_t = s]\]</div>
+  </div>
+  <div class="label"><span class="tag">definition · action-value</span>
+    <p><b>행동가치함수 \(q_\pi(s,a)\)</b>: 상태 \(s\)에서 행동 \(a\)를 하고, 그 뒤로 정책 \(\pi\)를 따를 때의 기대 리턴</p>
+    <div class="eq">\[q_\pi(s,a) = \E_\pi[G_t \mid S_t = s, A_t = a]\]</div>
+  </div>
+  <p>둘의 관계 — 상태가치는 행동가치를 정책 확률로 평균낸 것:</p>
+  <div class="eq">\[v_\pi(s) = \sum_{a \in \A(s)} \pi(a \mid s)\, q_\pi(s,a), \quad \forall s \in \S\]</div>
+</section>
+
+<section class="card" id="apple" data-toc="예제: 사과 줍기 로봇">
+  <h2>Example <span class="ko">사과 줍기 로봇</span></h2>
+  <span class="slide-ref">p.26</span>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>State: 0 (왼쪽 칸), 1 (오른쪽 칸, 사과)</li>
+        <li>Action: Left, Right</li>
+        <li>Reward: 벽에 부딪히면 −1, 사과를 얻으면 +1, 그 외 0</li>
+        <li>\(\gamma = 0.9\)</li>
+      </ul>
+      <p style="font-size:15px">0에서 R → 1로 가며 사과 획득(+1). 1에서 L → 0으로 이동(0). 0에서 L, 1에서 R은 벽(−1, 제자리). 사과는 다시 생긴다고 생각하면 돼요.</p>
+    </div>
+    <div class="tbl-wrap"><table class="t">
+      <thead><tr><th></th><th>π(0)</th><th>π(1)</th><th class="num">\(v_\pi(0)\)</th></tr></thead>
+      <tbody>
+        <tr><td>Policy 1</td><td>L</td><td>L</td><td class="num">−10</td></tr>
+        <tr><td>Policy 2</td><td>L</td><td>R</td><td class="num">−10</td></tr>
+        <tr class="hl"><td>Policy 3</td><td>R</td><td>L</td><td class="num">5.26</td></tr>
+        <tr><td>Policy 4</td><td>R</td><td>R</td><td class="num">−8</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <h3>계산 과정 (필기)</h3>
+  <ul>
+    <li>Policy 1 (L, L): 계속 벽에 박음 → \(-1 - 0.9 - 0.9^2 - \cdots = \dfrac{-1}{1-0.9} = -10\)</li>
+    <li>Policy 3 (R, L): +1, 0, +1, 0, … → \(1 + 0.9\cdot 0 + 0.9^2 \cdot 1 + \cdots = \dfrac{1}{1-0.9^2} = 5.26\)</li>
+    <li>Policy 4 (R, R): +1 후 계속 벽 → \(1 - 0.9 - 0.9^2 - \cdots = 1 - \dfrac{0.9}{1-0.9} = -8\)</li>
+  </ul>
+  <div class="note"><span class="hand">포인트</span>가치함수가 있으면 정책끼리 <b>비교</b>가 가능해진다! → Policy 3이 4개 중 최고.</div>
+  <div data-widget="apple"></div>
+</section>
+
+<section class="card" id="optimal-v" data-toc="최적 가치함수">
+  <h2>Optimal Value Function <span class="ko">최적 가치함수</span></h2>
+  <span class="slide-ref">p.27</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>최적 상태가치함수</b> \(v_*(s)\)는 모든 정책에 대한 가치함수의 최댓값</p>
+    <div class="eq">\[v_*(s) = \max_\pi v_\pi(s)\]</div>
+  </div>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>최적 행동가치함수</b> \(q_*(s,a)\)는 모든 정책에 대한 행동가치함수의 최댓값</p>
+    <div class="eq">\[q_*(s,a) = \max_\pi q_\pi(s,a)\]</div>
+  </div>
+  <p>최적 가치함수는 MDP에서 낼 수 있는 “최선의 성능”을 나타내고, 이걸 알면 MDP는 “풀렸다(solved)”고 할 수 있어요.</p>
+</section>
+
+<section class="card" id="optimal-pi" data-toc="최적 정책 정리">
+  <h2>Optimal Policy <span class="ko">최적 정책</span></h2>
+  <span class="slide-ref">p.28</span>
+  <p>정책들 사이에 <b>부분 순서(partial ordering)</b>를 정의:</p>
+  <div class="eq">\[\pi \ge \pi' \quad \text{if} \quad v_\pi(s) \ge v_{\pi'}(s),\ \forall s\]</div>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>모든 MDP에 대해</p>
+    <ul>
+      <li>다른 모든 정책보다 좋거나 같은 <b>최적 정책 \(\pi_*\)가 존재</b>한다: \(\pi_* \ge \pi,\ \forall \pi\)</li>
+      <li>모든 최적 정책은 최적 가치함수를 달성한다: \(v_{\pi_*}(s) = v_*(s)\)</li>
+      <li>모든 최적 정책은 최적 행동가치함수를 달성한다: \(q_{\pi_*}(s,a) = q_*(s,a)\)</li>
+    </ul>
+  </div>
+  <p>즉, 최적 정책 \(\pi_*\)는</p>
+  <div class="eq">\[v_{\pi_*}(s) \ge v_\pi(s),\ \forall s \in \S \qquad q_{\pi_*}(s,a) \ge q_\pi(s,a),\ \forall s \in \S, a \in \A\]</div>
+  <div class="note"><span class="hand">왜 “부분” 순서?</span>정책 A가 어떤 상태에선 낫고 다른 상태에선 못할 수 있어서, 모든 정책 쌍이 비교 가능한 건 아니에요. 그래도 “모든 상태에서 최고”인 정책은 항상 존재한다는 게 이 정리의 핵심!</div>
+</section>
+
+<section class="card" id="types" data-toc="RL 에이전트 분류">
+  <h2>Types of RL Agents <span class="ko">에이전트 분류</span></h2>
+  <span class="slide-ref">p.29 – 31</span>
+  <div class="cols">
+    <div class="box"><h4>모델 유무로</h4>
+      <ul><li><b>Model-based</b>: 모델을 명시적으로 가짐. 정책/가치함수는 있을 수도 없을 수도.</li>
+      <li><b>Model-free</b>: 가치함수 및/또는 정책을 명시적으로 가짐. 모델 없음.</li></ul></div>
+    <div class="box"><h4>무엇을 학습하나로</h4>
+      <ul><li><b>Value-based</b>: 가치함수만 명시적, 정책은 암묵적 (예: 가치가 최대인 행동 선택)</li>
+      <li><b>Policy-based</b>: 정책만 명시적, 가치함수 없음</li>
+      <li><b>Actor-critic</b>: 정책과 가치함수 둘 다</li></ul></div>
+  </div>
+  <figure class="fig">
+    <svg viewBox="0 0 520 380" font-family="Geist, sans-serif" font-size="15">
+      <circle cx="200" cy="150" r="120" fill="#f7efe9" stroke="#171717" stroke-width="1.5" fill-opacity=".8"/>
+      <circle cx="320" cy="150" r="120" fill="#f7efe9" stroke="#171717" stroke-width="1.5" fill-opacity=".8"/>
+      <circle cx="260" cy="250" r="120" fill="none" stroke="#171717" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="130" y="140" text-anchor="middle" fill="#3b82f6">Value Function</text>
+      <text x="395" y="140" text-anchor="middle" fill="#3b82f6">Policy</text>
+      <text x="260" y="345" text-anchor="middle" fill="#3b82f6">Model</text>
+      <text x="260" y="80" text-anchor="middle" fill="#ce500a">Model-Free</text>
+      <text x="260" y="140" text-anchor="middle" fill="#ce500a" font-weight="600">Actor Critic</text>
+      <text x="150" y="200" text-anchor="middle" fill="#ce500a" font-weight="600">Value-Based</text>
+      <text x="370" y="200" text-anchor="middle" fill="#ce500a" font-weight="600">Policy-Based</text>
+      <text x="260" y="225" text-anchor="middle" fill="#ce500a">Model-Based</text>
+    </svg>
+    <figcaption>Categorizing RL agents (Silver)</figcaption>
+  </figure>
+</section>
+
+<section class="card tint" id="quiz02" data-toc="셀프 체크 퀴즈">
+  <h2>Self-check <span class="ko">스스로 확인하기</span></h2>
+  <details class="quiz"><summary>MP, MRP, MDP를 튜플로 써 보고 각각 무엇이 추가됐는지 말해보세요.</summary>
+    <div class="ans">MP \(\langle\S,\P\rangle\) → MRP \(\langle\S,\P,\Rc,\gamma\rangle\) (보상과 할인율 추가) → MDP \(\langle\S,\A,\P,\Rc,\gamma\rangle\) (행동 추가, \(\P\)와 \(\Rc\)가 행동에 의존).</div></details>
+  <details class="quiz"><summary>\(\gamma = 0.5\), 보상이 1, 2, 4 순서로 들어올 때 \(G_t\)는?</summary>
+    <div class="ans">\(1 + 0.5 \cdot 2 + 0.25 \cdot 4 = 3\)</div></details>
+  <details class="quiz"><summary>Continuous task에서 \(\gamma = 1\)을 쓰면 왜 문제가 되나요?</summary>
+    <div class="ans">끝이 없어서 보상이 무한히 더해지므로 리턴이 발산할 수 있어요. 그래서 \(\gamma \ne 1\).</div></details>
+  <details class="quiz"><summary>\(v_\pi(s)\)와 \(q_\pi(s,a)\)의 관계식은?</summary>
+    <div class="ans">\(v_\pi(s) = \sum_a \pi(a\mid s)\, q_\pi(s,a)\)</div></details>
+  <details class="quiz"><summary>사과 예제에서 Policy 2 (L, R)의 \(v_\pi(0)\)이 −10인 이유는?</summary>
+    <div class="ans">상태 0에서 L만 하므로 상태 1에 절대 가지 않아요. 계속 벽에 부딪혀 −1을 받으니 Policy 1과 같은 \(-1/(1-0.9) = -10\). (π(1)은 영향 없음)</div></details>
+  <details class="quiz"><summary>Value-based와 Policy-based, Actor-critic의 차이는?</summary>
+    <div class="ans">Value-based는 가치함수만 명시적으로 학습(정책은 가치에서 유도), Policy-based는 정책만, Actor-critic은 둘 다 학습.</div></details>
+  <details class="quiz"><summary>택시 MDP에서 \(r(\text{Haeundae}, \text{Wait})\)는?</summary>
+    <div class="ans">\(0.4 \times (-1) + 0.2 \times 5 + 0.4 \times 20 = 8.6\)</div></details>
+</section>
+
+<nav class="ch-nav"></nav>
+    </main>
+  </div>
+</div>
+</body>
+</html>

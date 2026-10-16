@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05. Monte Carlo — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/widgets.js"></script>
+<script defer src="assets/anim.js"></script>
+<script defer src="assets/notes.js"></script>
+</head>
+<body data-ch="05">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">lecture 05 · 모델 없이, 경험으로 배우기</span>
+    <h1 class="display">monte carlo<br>method</h1>
+    <p class="lede">이제 전이확률·보상을 <span class="mk">모르는</span> 진짜 강화학습이 시작돼요. 에피소드를 끝까지 해 보고 받은 리턴을 <b>평균</b> 내는 가장 단순한 아이디어 — 몬테카를로. 탐험(ε-greedy), 수렴(GLIE), 그리고 파이썬 구현까지.</p>
+    <div class="meta">원본: 05.Monte_Carlo.pdf (43 slides) · Hyelim Shin, PNU IE</div>
+    <div data-sticker="bear" data-rot="8" style="right:7%;top:70px;width:84px;height:80px"></div>
+    <div data-sticker="star" data-rot="-10" style="right:19%;top:210px;width:52px;height:52px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<h2 class="part-title"><small>part 1</small>dp vs rl</h2>
+
+<section class="card tint" id="recap" data-toc="지금까지 & 앞으로">
+  <h2>What have we learned? And what will we learn?</h2>
+  <span class="slide-ref">p.2, p.6</span>
+  <div class="roadmap">
+    <span class="node">MDP</span><span class="arr">→</span><span class="node">DP (PI, VI)</span><span class="arr">→</span><span class="node hot">Monte Carlo RL</span><span class="arr">→</span><span class="node">TD: SARSA, Q-learning</span><span class="arr">→</span><span class="node">DQN</span><span class="arr">→</span><span class="node">Policy Gradient</span>
+  </div>
+  <ul>
+    <li><b>MDP</b>: RL 환경을 모델링하는 표준 수학적 틀 (정책, 가치함수, 전이 & 보상), 벨만 방정식</li>
+    <li><b>DP</b>: 전이·보상 모델을 알 때 MDP를 <b>정확히</b> 푸는 알고리즘 (PI, VI)</li>
+    <li><b>Reinforcement Learning</b>: 전이·보상 모델을 모르거나 다루기 힘들 때 MDP를 <b>근사적으로</b> 푸는 방법
+      <ul><li>Monte Carlo RL</li><li>TD Methods: SARSA, Q-learning</li><li>Function approximation: Deep Q-Network (DQN)</li><li>Policy Gradient</li></ul></li>
+  </ul>
+</section>
+
+<section class="card" id="dp-vs-rl" data-toc="DP vs RL">
+  <h2>DP vs RL <span class="ko">planning vs learning</span></h2>
+  <span class="slide-ref">p.4 – 5</span>
+  <div class="cols">
+    <div class="box"><h4>DP (Planning, known MDP)</h4>
+      <ul><li>MDP를 완전히 아는 상태에서 계획(planning)</li>
+      <li>planning = 모델이 만든 <b>시뮬레이션 경험</b>에 백업 연산을 적용해 가치함수를 계산</li>
+      <li>벨만 방정식을 <b>푼다</b></li>
+      <li>Value Iteration, Policy Iteration</li></ul></div>
+    <div class="box"><h4>RL (Learning, unknown MDP)</h4>
+      <ul><li>MDP를 모르거나(혹은 너무 커서 다룰 수 없을 때) 불완전한 정보로 학습(learning)</li>
+      <li>learning = 환경이 만든 <b>실제 경험</b>을 사용</li>
+      <li>벨만 방정식을 <b>근사적으로</b> 푼다</li>
+      <li>Monte Carlo Method, Temporal Difference Learning</li></ul></div>
+  </div>
+  <figure class="fig">
+    <svg viewBox="0 0 600 190" font-family="Geist, sans-serif" font-size="13">
+      <g stroke="#2b1a07" stroke-width="1.2" fill="none">
+        <path d="M100 25 L60 80"/><path d="M100 25 L140 80"/><path d="M60 80 L40 150"/><path d="M60 80 L80 150"/><path d="M140 80 L120 150"/><path d="M140 80 L160 150"/>
+        <path d="M300 25 L300 60"/><path d="M300 60 L300 95"/><path d="M300 95 L300 130"/><path d="M300 130 L300 160"/>
+        <path d="M500 25 L500 70"/><path d="M500 70 L500 110"/>
+      </g>
+      <g fill="#fdfbf9" stroke="#171717" stroke-width="1.4"><circle cx="100" cy="25" r="10"/><circle cx="40" cy="150" r="9"/><circle cx="80" cy="150" r="9"/><circle cx="120" cy="150" r="9"/><circle cx="160" cy="150" r="9"/>
+        <circle cx="300" cy="25" r="10"/><circle cx="300" cy="95" r="9"/><rect x="291" y="155" width="18" height="18"/>
+        <circle cx="500" cy="25" r="10"/><circle cx="500" cy="110" r="9"/></g>
+      <g fill="#171717"><circle cx="60" cy="80" r="5"/><circle cx="140" cy="80" r="5"/><circle cx="300" cy="60" r="5"/><circle cx="300" cy="130" r="5"/><circle cx="500" cy="70" r="5"/></g>
+      <g fill="#ff6f1e" stroke="none" opacity=".25"><rect x="25" y="10" width="150" height="155" rx="10"/><rect x="285" y="10" width="30" height="170" rx="10"/><rect x="485" y="10" width="30" height="115" rx="10"/></g>
+      <g text-anchor="middle" fill="#2b1a07"><text x="100" y="186">DP: 모든 경우 1스텝 (full-width)</text><text x="300" y="186">MC: 한 경로 끝까지</text><text x="500" y="186">TD: 한 경로 1스텝</text></g>
+    </svg>
+  </figure>
+</section>
+
+<h2 class="part-title"><small>part 2</small>monte carlo method</h2>
+
+<section class="card" id="mc-method" data-toc="몬테카를로 방법이란">
+  <h2>Monte Carlo Method <span class="ko">몬테카를로 방법</span></h2>
+  <span class="slide-ref">p.8</span>
+  <ul>
+    <li><b>Monte Carlo</b>: 반복적인 무작위 샘플링에 의존해 수치적 결과를 얻는 계산법</li>
+    <li>몬테카를로 방법은 확률변수의 함수에 대한 <b>기댓값을 무작위 샘플로 추정</b>하는 계산 기법</li>
+  </ul>
+  <p>예: 원의 넓이를 모를 때 정사각형 안에 점을 무작위로 많이 찍고, 원 안에 들어간 비율로 넓이(π)를 추정하는 것.</p>
+</section>
+
+<section class="card" id="lln" data-toc="큰 수의 법칙">
+  <h2>Law of Large Numbers <span class="ko">큰 수의 법칙 (LLN)</span></h2>
+  <span class="slide-ref">p.9</span>
+  <p>독립이고 동일한 분포(<b>i.i.d.</b>)를 따르는 표본의 수가 늘어날수록, 표본평균은 모평균(기댓값 \(\mu\))에 가까워진다.</p>
+  <div class="eq">\[P\Big(\lim_{n\to\infty} \frac{1}{n}\sum_{i=1}^{n} X_i = \mu\Big) = 1\]</div>
+  <div class="note"><span class="hand">RL에 적용하면</span>\(v_\pi(s) = \E_\pi[G_t \mid S_t = s]\)는 기댓값이니까, 상태 \(s\)에서 시작한 리턴 샘플들을 많이 모아 평균 내면 \(v_\pi(s)\)에 가까워진다!</div>
+</section>
+
+<section class="card" id="mc-eval" data-toc="MC로 가치함수 평가 (증분 업데이트)">
+  <h2>Evaluate Value Function using MC <span class="ko">증분 평균</span></h2>
+  <span class="slide-ref">p.11</span>
+  <div class="eq">\[v_\pi(s) = \E_\pi[G \mid s]\]</div>
+  <div class="eq">\[V_n(s) = \frac{G^{(1)} + G^{(2)} + \cdots + G^{(n)}}{n}\]</div>
+  <p>매번 전부 다시 더하지 않고 <b>이전 평균만으로</b> 갱신할 수 있어요:</p>
+  <div class="eq">\[\begin{aligned}
+  V_n(s) &= \frac{(n-1)V_{n-1}(s) + G^{(n)}}{n} \\
+  &= V_{n-1}(s) + \frac{1}{n}\big(G^{(n)} - V_{n-1}(s)\big) \quad \text{: Incremental Monte Carlo updates}
+  \end{aligned}\]</div>
+  <div class="note"><span class="hand">패턴 기억하기</span>새 추정 = 옛 추정 + 스텝크기 × (목표 − 옛 추정). 이 꼴은 TD, SARSA, Q-learning에서도 계속 나와요!</div>
+</section>
+
+<section class="card" id="mc-ex1" data-toc="예: 두 번의 시행">
+  <h2>Example: two trials <span class="ko">계산 연습</span></h2>
+  <span class="slide-ref">p.12</span>
+  <p>같은 상태 \(s\)에서 두 번 시작했을 때 (\(\gamma = 0.9\)):</p>
+  <ul>
+    <li>1st trial: 보상 1, 0, 2 → \(G^{(1)} = 1 + 0.9\cdot 0 + 0.9^2 \cdot 2 = 2.62\)</li>
+    <li>2nd trial: 보상 0, 0, 1, 1 → \(G^{(2)} = 0 + 0.9\cdot 0 + 0.9^2\cdot 1 + 0.9^3\cdot 1 = 1.54\)</li>
+  </ul>
+  <div class="eq">\[V_\pi(s) = \frac{2.62 + 1.54}{2} = 2.08 = 2.62 + \tfrac12(1.54 - 2.62) = 2.62 - 0.54 = 2.08\]</div>
+  <p>그리고 한 에피소드 안의 모든 상태의 리턴은 <b>뒤에서부터</b> 재귀적으로 효율적으로 구해요:</p>
+  <div class="cols">
+    <div class="eq">\[G_A = R_0 + \gamma R_1 + \gamma^2 R_2,\quad G_B = R_1 + \gamma R_2,\quad G_C = R_2\]</div>
+    <div class="eq">\[G_C = R_2,\quad G_B = R_1 + \gamma G_C,\quad G_A = R_0 + \gamma G_B\]</div>
+  </div>
+</section>
+
+<section class="card" id="mc-q" data-toc="왜 Q 함수를 추정하나">
+  <h2>How to Improve? <span class="ko">v 대신 q 를!</span></h2>
+  <span class="slide-ref">p.13</span>
+  <p>DP에서는 \(v\)로 그리디 정책을 만들었어요:</p>
+  <div class="eq">\[\mu(s) = \argmax_a \sum_{s'} p(s'\mid s,a)\{r(s,a,s') + \gamma V(s')\}\]</div>
+  <p>하지만 MC는 <b>model-free</b> — \(p\)도 \(\Rc\)도 몰라요! 그래서 이 식을 쓸 수 없어요. 대신 <b>Q-함수(행동가치함수)</b>를 평가하면 모델 없이 바로 그리디 정책을 만들 수 있어요:</p>
+  <div class="eq">\[\mu(s) = \argmax_a Q(s,a)\]</div>
+  <div class="cols">
+    <div class="eq">\[\begin{aligned} V_n(s) &= \tfrac{G^{(1)} + \cdots + G^{(n)}}{n} \\ &= V_{n-1}(s) + \tfrac{1}{n}\big(G^{(n)} - V_{n-1}(s)\big)\end{aligned}\]</div>
+    <div class="eq">\[\begin{aligned} Q_n(s,a) &= \tfrac{G^{(1)} + \cdots + G^{(n)}}{n} \\ &= Q_{n-1}(s,a) + \tfrac{1}{n}\big(G^{(n)} - Q_{n-1}(s,a)\big)\end{aligned}\]</div>
+  </div>
+</section>
+
+<section class="card" id="mc-ex2" data-toc="예: 3×3 격자 MC 평가">
+  <h2>Example of MC Policy Evaluation <span class="ko">3×3 격자</span></h2>
+  <span class="slide-ref">p.14 – 18</span>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>9 states, 4 actions: L(←), R(→), D(↓), U(↑)</li>
+        <li>Reward: 목표 도달 시 0, 그 외 −1</li>
+        <li>\(\gamma = 0.9\), 초기 \(Q(s,a) = 0\)</li>
+      </ul>
+    </div>
+    <div class="gw" style="grid-template-columns:repeat(3,auto)">
+      <div class="cell start"><span class="idx">1</span></div><div class="cell"><span class="idx">2</span></div><div class="cell"><span class="idx">3</span></div>
+      <div class="cell"><span class="idx">4</span></div><div class="cell"><span class="idx">5</span></div><div class="cell"><span class="idx">6</span></div>
+      <div class="cell"><span class="idx">7</span></div><div class="cell"><span class="idx">8</span></div><div class="cell goal"><span class="idx">9</span>G</div>
+    </div>
+  </div>
+  <h3>1st episode (정책을 따라 샘플)</h3>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>t</th><th>\(S_t\)</th><th>\(A_t\)</th><th class="num">\(R_{t+1}\)</th><th class="num">\(G_t = R_{t+1} + \gamma G_{t+1}\)</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>1</td><td>D</td><td class="num">−1</td><td class="num">−1 + 0.9 G₁ = −4.1</td></tr>
+      <tr><td>1</td><td>4</td><td>D</td><td class="num">−1</td><td class="num">−1 + 0.9 G₂ = −3.44</td></tr>
+      <tr><td>2</td><td>7</td><td>R</td><td class="num">−1</td><td class="num">−1 + 0.9 G₃ = −2.71</td></tr>
+      <tr><td>3</td><td>8</td><td>L</td><td class="num">−1</td><td class="num">−1 + 0.9 G₄ = −1.9</td></tr>
+      <tr><td>4</td><td>7</td><td>R</td><td class="num">−1</td><td class="num">−1 + 0.9 G₅ = −1</td></tr>
+      <tr><td>5</td><td>8</td><td>R</td><td class="num">0</td><td class="num">0</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Q 업데이트 알고리즘</h3>
+  <div class="eq">\[N(S_t, A_t) \leftarrow N(S_t, A_t) + 1, \qquad Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \frac{1}{N(S_t,A_t)}\big(G_t - Q(S_t,A_t)\big)\]</div>
+  <div class="note"><span class="hand">❗ First-visit MC</span>(7, R)은 t=2와 t=4에 두 번 나와요. <b>First-visit MC</b>는 에피소드에서 처음 방문했을 때(t=2)의 리턴만 써요: \(N(7,R)=1\), \(Q(7,R) = 0 + \tfrac11(-2.71 - 0) = -2.71\). (매 방문마다 쓰면 Every-visit MC)</div>
+  <p>결과: \(Q(1,D) = -4.1\), \(Q(4,D) = -3.44\), \(Q(7,R) = -2.71\), \(Q(8,L) = -1.9\), \(Q(8,R) = 0\), 나머지는 0.</p>
+  <div data-widget="mcepisode"></div>
+  <p style="font-size:15px">※ 5장 구현 코드(p.38)는 <code class="i">reversed</code>로 돌면서 dict에 덮어써서, 결과적으로 가장 앞(first-visit)의 G가 남아요.</p>
+<div data-anim="mcep"></div>
+</section>
+
+<section class="card" id="mc-pi" data-toc="MC 정책 이터레이션">
+  <h2>Monte Carlo Policy Iteration</h2>
+  <span class="slide-ref">p.19 – 20</span>
+  <ul>
+    <li><b>수렴한 뒤에 개선</b> (Improve after convergence)</li>
+    <li>Policy evaluation: Monte Carlo 정책 평가, \(Q = q_\pi\)</li>
+    <li>Policy improvement: 그리디 정책 개선</li>
+  </ul>
+  <p>복습: GPI — 어떤 평가든, 어떤 개선이든 OK. 그러니 DP 평가 자리에 MC 평가를 끼워 넣은 것.</p>
+</section>
+
+<section class="card" id="mc-greedy-fail" data-toc="순수 그리디의 문제 (FrozenLake)">
+  <h2>FrozenLake Example <span class="ko">순수 그리디의 함정</span></h2>
+  <span class="slide-ref">p.21</span>
+  <p>FrozenLake에서 첫 에피소드가 우연히 S→1→2→6→10→9→13→14→G 같은 경로로 목표에 도달했다고 해요. 그 경로의 Q 값은 \(1, 0.9, 0.81, 0.73, 0.66, 0.59, 0.53, 0.48\)이 되고, 나머지는 전부 0.</p>
+  <p>여기서 <b>순수 그리디</b>로 개선하면 → Greedy policy = 1st 에피소드의 행동. 다른 행동은 Q=0이라 영원히 선택되지 않아요. 그래서 더 짧은 최적 경로를 <b>절대 발견하지 못해요</b>.</p>
+  <div class="note"><span class="hand">필기: optimal policy 찾을 수 있나? 아니, greedy니까!</span>→ 모델이 없으니 <b>직접 해 봐야만</b> 알 수 있다. 계속 탐험(exploration)하는 장치가 필요!</div>
+</section>
+
+<section class="card" id="egreedy" data-toc="ε-greedy 탐험">
+  <h2>ε-Greedy Exploration</h2>
+  <span class="slide-ref">p.22</span>
+  <ul>
+    <li>지속적인 탐험을 보장하는 가장 단순한 아이디어</li>
+    <li>모든 \(m\)개 행동이 0이 아닌 확률로 시도된다</li>
+    <li>확률 \(1-\varepsilon\)으로 그리디 행동 선택</li>
+    <li>확률 \(\varepsilon\)으로 무작위 행동 선택 (그리디 행동 포함!)</li>
+  </ul>
+  <div class="eq">\[\pi(a \mid s) = \begin{cases} \dfrac{\varepsilon}{m} + 1 - \varepsilon & \text{if } a = \argmax_{a^* \in \A} Q(s, a^*) \\[2mm] \dfrac{\varepsilon}{m} & \text{otherwise} \end{cases}\]</div>
+  <div data-widget="egreedy"></div>
+<div data-anim="spin"></div>
+</section>
+
+<section class="card" id="mc-control" data-toc="MC 정책 이터레이션 vs MC Control">
+  <h2>MC Policy Iteration vs MC Control</h2>
+  <span class="slide-ref">p.23 – 24</span>
+  <div class="cols">
+    <div class="box"><h4>MC Policy Iteration</h4>
+      <ul><li><b>수렴 후에</b> 개선</li><li>평가: MC 정책 평가, \(Q = q_\pi\)</li><li>개선: ε-greedy 정책 개선</li></ul></div>
+    <div class="box"><h4>MC Control</h4>
+      <ul><li><b>매 에피소드마다</b> 개선</li><li>평가: MC 정책 평가, \(Q \approx q_\pi\)</li><li>개선: ε-greedy 정책 개선</li></ul></div>
+  </div>
+  <p>MC Control은 평가를 끝까지 하지 않고 한 에피소드만 반영한 뒤 바로 개선 → 이것도 GPI라서 OK!</p>
+</section>
+
+<section class="card" id="eg-improve" data-toc="ε-greedy 정책 개선 정리">
+  <h2>ε-Greedy Policy Improvement <span class="ko">정리 + 증명</span></h2>
+  <span class="slide-ref">p.25</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>임의의 ε-greedy 정책 \(\pi\)에 대해, \(q_\pi\)에 대한 ε-greedy 정책 \(\pi'\)는 개선이다: \(v_{\pi'}(s) \ge v_\pi(s)\).</p>
+  </div>
+  <div class="label proof"><span class="tag">proof</span>
+    <div class="eq">\[\begin{aligned}
+    q_\pi(s, \pi'(s)) &= \sum_{a \in \A} \pi'(a\mid s)\, q_\pi(s,a) \\
+    &= \frac{\varepsilon}{m}\sum_{a \in \A} q_\pi(s,a) + (1-\varepsilon)\max_{a \in \A} q_\pi(s,a) \\
+    &\ge \frac{\varepsilon}{m}\sum_{a \in \A} q_\pi(s,a) + (1-\varepsilon)\sum_{a \in \A}\frac{\pi(a\mid s) - \frac{\varepsilon}{m}}{1-\varepsilon}\, q_\pi(s,a) \\
+    &= \sum_{a \in \A} \pi(a\mid s)\, q_\pi(s,a) = v_\pi(s)
+    \end{aligned}\]</div>
+    <p style="font-size:15px">부등호: \(\frac{\pi(a\mid s) - \varepsilon/m}{1-\varepsilon}\)는 합이 1인 음이 아닌 가중치(π가 ε-greedy니까 \(\pi(a\mid s) \ge \varepsilon/m\))라서 그 가중평균은 max보다 작거나 같다.</p>
+    <p>그러면 <b>정책 개선 정리</b>(\(q_\pi(s,\pi'(s)) \ge v_\pi(s)\ \forall s \Rightarrow v_{\pi'}(s) \ge v_\pi(s)\ \forall s\))에 의해 \(v_{\pi'} \ge v_\pi\). \(\blacksquare\)</p>
+  </div>
+</section>
+
+<section class="card" id="esoft" data-toc="ε-soft 최적 정책">
+  <h2>ε-soft Optimal Policy</h2>
+  <span class="slide-ref">p.26</span>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>ε-soft 정책</b>: 어떤 \(\varepsilon \gt 0\)에 대해 모든 상태·행동에서 \(\pi(a\mid s) \ge \dfrac{\varepsilon}{|\A(s)|}\)인 정책.</p>
+  </div>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>ε-soft 최적 정책</b>:</p>
+    <div class="eq">\[\pi^*_\varepsilon \in \argmax_{\pi \in \Pi_\varepsilon} v_\pi(s),\ \forall s \in \S, \qquad \Pi_\varepsilon = \Big\{\pi \;\Big|\; \pi(a\mid s) \ge \frac{\varepsilon}{|\A(s)|},\ \forall s \in \S, a \in \A(s)\Big\}\]</div>
+  </div>
+  <p>ε를 <b>상수로 고정</b>하면 MC 정책 이터레이션과 MC 제어 모두 (진짜 최적이 아닌) <b>ε-soft 최적 정책</b>으로 수렴해요. 항상 ε만큼 랜덤하게 행동해야 하니까 그 제약 안에서의 최선.</p>
+</section>
+
+<h2 class="part-title"><small>part 3</small>convergence of mc rl</h2>
+
+<section class="card" id="glie" data-toc="GLIE">
+  <h2>Greedy in the Limit with Infinite Exploration <span class="ko">GLIE</span></h2>
+  <span class="slide-ref">p.27</span>
+  <div class="label"><span class="tag">definition · glie</span>
+    <ul>
+      <li>모든 상태-행동 쌍이 <b>무한히 많이</b> 탐험된다: \(\displaystyle\lim_{k\to\infty} N_k(s,a) = \infty\)</li>
+      <li>정책이 <b>그리디 정책으로 수렴</b>한다: \(\displaystyle\lim_{k\to\infty} \pi_k(a\mid s) = \mathbf{1}\big(a = \argmax_{a' \in \A} Q_k(s,a')\big)\)</li>
+    </ul>
+  </div>
+  <p>예: \(\varepsilon_k = \dfrac{1}{k}\)로 ε을 0으로 줄여 나가는 ε-greedy는 GLIE.</p>
+  <div class="note"><span class="hand">직관</span>처음엔 많이 탐험하고(모든 걸 충분히 시도), 나중엔 점점 그리디하게(배운 걸 활용). 탐험과 활용의 균형을 시간에 따라 조절!</div>
+</section>
+
+<section class="card" id="glie-mc" data-toc="GLIE MC 제어 수렴 정리">
+  <h2>Convergence of MC RL to Optimal Policy</h2>
+  <span class="slide-ref">p.28</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p><b>GLIE Monte Carlo control</b>은 최적 행동가치함수로 수렴한다: \(Q(s,a) \to q_*(s,a)\).</p>
+  </div>
+  <ol>
+    <li>\(\pi\)로 \(k\)번째 에피소드 샘플: \(\{S_1, A_1, R_2, \dots, S_T\} \sim \pi\)</li>
+    <li>에피소드의 각 \(S_t, A_t\)에 대해
+      <div class="eq">\[N(S_t,A_t) \leftarrow N(S_t,A_t) + 1, \qquad Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \frac{1}{N(S_t,A_t)}\big(G_t - Q(S_t,A_t)\big)\]</div></li>
+    <li>새 행동가치함수로 정책 개선: \(\varepsilon \leftarrow 1/k\), \(\pi \leftarrow \varepsilon\text{-greedy}(Q)\)</li>
+  </ol>
+</section>
+
+<section class="card tint" id="mc-summary" data-toc="MC RL 요약 & 에이전트 분류">
+  <h2>Monte Carlo Reinforcement Learning <span class="ko">요약</span></h2>
+  <span class="slide-ref">p.29 – 32</span>
+  <ul>
+    <li>MC는 <b>에피소드 경험으로부터 직접</b> 학습한다.</li>
+    <li>MC는 <b>model-free</b>: MDP의 전이/보상을 몰라도 된다.</li>
+    <li>MC는 <b>완전한 에피소드</b>로부터 학습한다: <b>부트스트래핑을 하지 않는다</b>.
+      <ul><li><b>Bootstrapping</b>: 다른 추정치를 바탕으로 추정치를 갱신하는 것</li>
+      <li>예) VI: \(V_{k+1}(s) = \max_a \sum_{s'} p(s'\mid s,a)\{r + \gamma V_k(s')\}\) — \(V_k\)라는 추정치로 \(V_{k+1}\)을 만듦</li></ul></li>
+    <li>MC는 가능한 가장 단순한 아이디어를 쓴다: <b>가치 = 평균 리턴</b></li>
+  </ul>
+  <p>복습 (2장): 에이전트의 3요소(정책, 가치함수, 모델)와 분류. MC 에이전트는 <b>Model-free</b>, <b>Value-based</b> (Q를 학습하고 ε-greedy로 정책을 암묵적으로 정의).</p>
+</section>
+
+<h2 class="part-title"><small>part 4</small>implementation of mc rl</h2>
+
+<section class="card" id="impl-setup" data-toc="구현: 패키지 & 메인 루프">
+  <h2>Implementation of MC RL <span class="ko">메인 루프</span></h2>
+  <span class="slide-ref">p.34 – 35</span>
+<pre class="code"><span class="k">import</span> gymnasium <span class="k">as</span> gym
+<span class="k">import</span> numpy <span class="k">as</span> np
+<span class="k">from</span> collections <span class="k">import</span> defaultdict
+env = gym.make(<span class="s">"FrozenLake-v1"</span>, is_slippery=<span class="k">False</span>, render_mode=<span class="s">"ansi"</span>)
+agent = McAgent()</pre>
+  <p><code class="i">defaultdict</code>: 없는 키에 접근하면 에러 대신 기본값을 자동으로 만들어 주는 딕셔너리. (Q 테이블을 0으로 초기화할 필요가 없어서 편함)</p>
+<pre class="code">episodes = 100000
+<span class="k">for</span> episode <span class="k">in</span> range(episodes):
+    state, _ = env.reset()   <span class="c"># Reset the place of agent</span>
+    agent.reset()            <span class="c"># Reset the memory</span>
+
+    <span class="k">while</span> <span class="k">True</span>:
+        action = agent.get_action(state)  <span class="c"># epsilon-greedy</span>
+        next_state, reward, terminated, truncated, info = env.step(action)
+        agent.add(state, action, reward)  <span class="c"># Save to memory(G)</span>
+        <span class="k">if</span> terminated <span class="k">or</span> truncated:      <span class="c"># Episode is done</span>
+            agent.update()                <span class="c"># Update Q-function</span>
+            <span class="k">break</span>
+        state = next_state</pre>
+  <div class="note"><span class="hand">흐름 정리</span>에피소드 끝날 때까지 (s, a, r)을 메모리에 쌓기만 하고, 끝나면 한꺼번에 Q 업데이트 → MC는 에피소드가 끝나야 배울 수 있다!</div>
+</section>
+
+<section class="card" id="impl-agent" data-toc="구현: McAgent 클래스">
+  <h2>Monte Carlo Agent <span class="ko">McAgent</span></h2>
+  <span class="slide-ref">p.36 – 38</span>
+<pre class="code"><span class="k">class</span> McAgent:
+    <span class="k">def</span> __init__(self):
+        self.gamma = 0.9
+        self.epsilon = 0.1
+        self.action_size = 4
+
+        random_actions = {0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25}
+        self.pi = defaultdict(<span class="k">lambda</span>: random_actions)  <span class="c"># 처음엔 무작위 정책</span>
+        self.Q = defaultdict(<span class="k">lambda</span>: 0)
+        self.cnts = defaultdict(<span class="k">lambda</span>: 0)              <span class="c"># N(s,a)</span>
+        self.memory = []
+
+    <span class="k">def</span> reset(self):
+        self.memory.clear()
+
+    <span class="k">def</span> get_action(self, state):
+        action_probs = self.pi[state]
+        actions = list(action_probs.keys())
+        probs = list(action_probs.values())
+        <span class="k">return</span> np.random.choice(actions, p=probs)
+
+    <span class="k">def</span> add(self, state, action, reward):
+        data = (state, action, reward)
+        self.memory.append(data)
+
+    <span class="k">def</span> update(self):
+        G = dict()
+        g = 0
+        <span class="k">for</span> data <span class="k">in</span> reversed(self.memory):     <span class="c"># 뒤에서부터 G 계산</span>
+            state, action, reward = data
+            g = self.gamma * g + reward
+            key = (state, action)
+            G[key] = g                          <span class="c"># 덮어쓰기 → 결국 first-visit G 가 남음</span>
+
+        <span class="k">for</span> key, g <span class="k">in</span> G.items():
+            state, action = key
+            self.cnts[key] += 1
+            self.Q[key] += (g - self.Q[key]) / self.cnts[key]      <span class="c"># 증분 평균</span>
+            self.pi[state] = greedy_probs(self.Q, state, self.epsilon)  <span class="c"># 개선</span></pre>
+</section>
+
+<section class="card" id="impl-greedy" data-toc="구현: greedy_probs">
+  <h2>ε-greedy policy <span class="ko">greedy_probs</span></h2>
+  <span class="slide-ref">p.39</span>
+<pre class="code"><span class="k">def</span> greedy_probs(Q, state, epsilon=0, action_size=4):
+    qs = [Q[(state, action)] <span class="k">for</span> action <span class="k">in</span> range(action_size)]
+    max_q = np.max(qs)
+    max_actions = [a <span class="k">for</span> a, q <span class="k">in</span> enumerate(qs) <span class="k">if</span> q == max_q]
+    max_action = np.random.choice(max_actions)   <span class="c"># tie-breaking</span>
+    base_prob = epsilon / action_size             <span class="c"># ε/m</span>
+    action_probs = {action: base_prob <span class="k">for</span> action <span class="k">in</span> range(action_size)}
+    action_probs[max_action] += (1 - epsilon)     <span class="c"># 그리디 행동엔 1−ε 추가</span>
+    <span class="k">return</span> action_probs</pre>
+  <p>Q 값이 같은 행동이 여러 개면 무작위로 하나 골라 그리디 행동으로 삼아요 (tie-breaking). 처음엔 모든 Q가 0이니까 특히 중요!</p>
+</section>
+
+<section class="card" id="nonstationary" data-toc="비정상 문제 & 지수이동평균">
+  <h2>Non-Stationary Problem <span class="ko">비정상 문제</span></h2>
+  <span class="slide-ref">p.40 – 42</span>
+  <p>큰 수의 법칙은 표본이 <b>i.i.d.</b>일 때 성립해요. 그런데 \(G^{(n)}\)들이 동일한 분포에서 나올까요?</p>
+  <p><b>아니요.</b> 정책 \(\pi(a\mid s)\)가 계속 바뀌니까 리턴의 분포도 계속 바뀌어요 → <b>비정상(non-stationary)</b>.</p>
+  <p>해결: 표본평균 대신 <b>지수이동평균(exponential moving average)</b>을 사용:</p>
+  <div class="eq">\[Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \frac{1}{N(S_t,A_t)}\big(G_t - Q(S_t,A_t)\big) \quad\Longrightarrow\quad Q(S_t,A_t) \leftarrow Q(S_t,A_t) + \alpha\big(G_t - Q(S_t,A_t)\big)\]</div>
+  <h3>왜 “지수” 이동평균?</h3>
+  <div class="eq">\[\begin{aligned}
+  Q_n(s,a) &= \alpha G^{(n)} + (1-\alpha) Q_{n-1}(s,a) \\
+  &= \alpha G^{(n)} + (1-\alpha)\big[\alpha G^{(n-1)} + (1-\alpha) Q_{n-2}(s,a)\big] \\
+  &= \alpha G^{(n)} + \alpha(1-\alpha) G^{(n-1)} + (1-\alpha)^2 Q_{n-2}(s,a) \\
+  &= \alpha G^{(n)} + \alpha(1-\alpha) G^{(n-1)} + \alpha(1-\alpha)^2 G^{(n-2)} + \cdots + \alpha(1-\alpha)^{n-1} G^{(1)} + (1-\alpha)^n Q_0(s,a)
+  \end{aligned}\]</div>
+  <p>가중치의 합: \(\sum_{i=1}^{n} \alpha(1-\alpha)^{n-i} + (1-\alpha)^n = 1\). 오래된 리턴일수록 가중치가 <b>지수적으로</b> 작아져요 → 최근 데이터를 더 믿음!</p>
+  <div data-widget="ema"></div>
+</section>
+
+<section class="card" id="impl-revise" data-toc="구현: α 버전으로 수정">
+  <h2>Revise MC RL Code <span class="ko">α 사용</span></h2>
+  <span class="slide-ref">p.43</span>
+<pre class="code"><span class="k">class</span> McAgent:
+    <span class="k">def</span> __init__(self):
+        self.gamma = 0.9
+        self.epsilon = 0.1
+        self.action_size = 4
+        self.alpha = 0.1                                   <span class="c"># ← 추가</span>
+
+        random_actions = {0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25}
+        self.pi = defaultdict(<span class="k">lambda</span>: random_actions)
+        self.Q = defaultdict(<span class="k">lambda</span>: 0)
+        self.memory = []                                   <span class="c"># cnts 는 더 이상 필요 없음</span>
+
+    <span class="c"># update() 안에서:</span>
+    <span class="c">#   self.Q[key] += (g - self.Q[key]) * self.alpha</span></pre>
+</section>
+
+<section class="card tint" id="quiz05" data-toc="셀프 체크 퀴즈">
+  <h2>Self-check <span class="ko">스스로 확인하기</span></h2>
+  <details class="quiz"><summary>MC에서 V 대신 Q를 추정하는 이유는?</summary>
+    <div class="ans">V로 그리디 정책을 만들려면 \(p(s'\mid s,a)\)와 \(r\)이 필요한데 MC는 model-free라 모름. Q가 있으면 \(\argmax_a Q(s,a)\)로 모델 없이 바로 정책을 만들 수 있음.</div></details>
+  <details class="quiz"><summary>ε=0.2, 행동 4개일 때 그리디 행동과 나머지 행동의 확률은?</summary>
+    <div class="ans">그리디: \(0.2/4 + 0.8 = 0.85\), 나머지: \(0.05\) 씩.</div></details>
+  <details class="quiz"><summary>First-visit MC와 Every-visit MC의 차이는?</summary>
+    <div class="ans">한 에피소드에서 같은 (s,a)를 여러 번 방문할 때, first-visit은 처음 방문 시점의 리턴만, every-visit은 모든 방문 시점의 리턴을 평균에 사용.</div></details>
+  <details class="quiz"><summary>GLIE의 두 조건은?</summary>
+    <div class="ans">(1) 모든 (s,a)를 무한히 방문, (2) 정책이 그리디 정책으로 수렴. 예: \(\varepsilon_k = 1/k\).</div></details>
+  <details class="quiz"><summary>상수 ε로 MC 제어를 돌리면 어디로 수렴하나요?</summary>
+    <div class="ans">진짜 최적 정책이 아니라 ε-soft 최적 정책.</div></details>
+  <details class="quiz"><summary>MC 업데이트에서 1/N 대신 α를 쓰는 이유는?</summary>
+    <div class="ans">정책이 계속 바뀌어 리턴이 i.i.d.가 아님(비정상). α를 쓰면 지수이동평균이 되어 최근 리턴에 더 큰 가중치를 줌.</div></details>
+  <details class="quiz"><summary>“부트스트래핑”이란? MC는 하나요?</summary>
+    <div class="ans">다른 추정치를 바탕으로 추정치를 갱신하는 것 (예: DP의 \(V_k\)로 \(V_{k+1}\) 계산). MC는 실제 리턴 \(G_t\)만 쓰므로 부트스트래핑을 하지 않음.</div></details>
+</section>
+
+<nav class="ch-nav"></nav>
+    </main>
+  </div>
+</div>
+</body>
+</html>

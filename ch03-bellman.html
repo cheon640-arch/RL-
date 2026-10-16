@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03. Bellman Equation — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/widgets.js"></script>
+<script defer src="assets/anim.js"></script>
+<script defer src="assets/notes.js"></script>
+</head>
+<body data-ch="03">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">lecture 03 · 가치함수를 재귀적으로 쪼개기</span>
+    <h1 class="display">bellman<br>equation</h1>
+    <p class="lede">“지금의 가치 = 바로 받는 보상 + 할인된 <span class="mk">다음 상태의 가치</span>.” 이 한 문장이 벨만 방정식이에요. 기대 방정식과 최적 방정식을 유도하고, 최적 가치함수가 왜 <b>존재하고 유일한지</b>까지 증명해요.</p>
+    <div class="meta">원본: 03.Bellman_Equation.pdf (27 slides) · Hyelim Shin, PNU IE</div>
+    <div data-sticker="heart" data-rot="9" style="right:7%;top:70px;width:90px;height:82px"></div>
+    <div data-sticker="star" data-rot="-6" style="right:18%;top:200px;width:56px;height:56px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<h2 class="part-title"><small>part 1</small>bellman expectation equation</h2>
+
+<section class="card" id="det-sto" data-toc="결정적 vs 확률적 정책">
+  <h2>Deterministic vs Stochastic Policy <span class="ko">출발점</span></h2>
+  <span class="slide-ref">p.2 – 3</span>
+  <p>2장의 사과 예제에서 <b>결정적 정책</b>(Policy 1~4)은 행동이 하나로 정해져서 리턴을 등비급수로 바로 계산할 수 있었어요 (예: Policy 3 → 5.26).</p>
+  <p>하지만 <b>확률적 정책</b>(예: L, R 각각 0.5)이면 가능한 경로가 트리처럼 가지를 쳐요.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 520 230" font-family="Geist, sans-serif" font-size="14">
+      <g stroke="#2b1a07" stroke-width="1.3" fill="none">
+        <path d="M260 40 L150 110"/><path d="M260 40 L370 110"/>
+        <path d="M150 110 L90 190"/><path d="M150 110 L210 190"/><path d="M370 110 L310 190"/><path d="M370 110 L430 190"/>
+      </g>
+      <g fill="#2b1a07" stroke="#171717"><circle cx="260" cy="40" r="18"/><circle cx="150" cy="110" r="18"/><circle cx="370" cy="110" r="18"/>
+        <circle cx="90" cy="190" r="18"/><circle cx="210" cy="190" r="18"/><circle cx="310" cy="190" r="18"/><circle cx="430" cy="190" r="18"/></g>
+      <g fill="#fdfbf9" text-anchor="middle"><text x="260" y="45">0</text><text x="150" y="115">0</text><text x="370" y="115">1</text>
+        <text x="90" y="195">0</text><text x="210" y="195">1</text><text x="310" y="195">0</text><text x="430" y="195">1</text></g>
+      <g fill="#ce500a" font-family="JetBrains Mono" font-size="12" text-anchor="middle">
+        <text x="185" y="68">L,−1 (0.5)</text><text x="335" y="68">R,+1 (0.5)</text>
+        <text x="95" y="150">L,−1</text><text x="205" y="150">R,+1</text><text x="315" y="150">L,0</text><text x="430" y="150">R,−1</text></g>
+      <text x="260" y="225" text-anchor="middle" fill="#2b1a07">⋮</text>
+    </svg>
+    <figcaption>우리는 이 모든 경로의 기댓값(expected value)을 계산해야 해요</figcaption>
+  </figure>
+  <p>무한히 뻗는 트리를 다 더할 순 없으니, <b>재귀적인 관계식</b>이 필요해요 → 벨만 방정식!</p>
+</section>
+
+<section class="card" id="bee-v" data-toc="벨만 기대 방정식 (v)">
+  <h2>Bellman Expectation Equation: v <span class="ko">상태가치함수</span></h2>
+  <span class="slide-ref">p.4</span>
+  <h3>Step 1. 리턴의 재귀 구조</h3>
+  <div class="eq">\[G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = R_{t+1} + \gamma (R_{t+2} + \gamma R_{t+3} + \cdots) = R_{t+1} + \gamma G_{t+1}\]</div>
+  <h3>Step 2. 기댓값 취하기</h3>
+  <div class="eq">\[\begin{aligned}
+  v_\pi(s) &= \E_\pi[G_t \mid S_t = s] = \E_\pi[R_{t+1} + \gamma G_{t+1} \mid S_t = s] \\
+  &= \E_\pi[R_{t+1} \mid S_t = s] + \gamma\, \E_\pi[G_{t+1} \mid S_t = s]
+  \end{aligned}\]</div>
+  <h3>Step 3. 첫째 항 (즉각 보상)</h3>
+  <div class="eq">\[\E_\pi[R_{t+1} \mid S_t = s] = \sum_a \sum_{s'} \pi(a \mid s)\, p(s' \mid s,a)\, r(s,a,s')\]</div>
+  <h3>Step 4. 둘째 항 (미래 리턴) — 5단계 유도</h3>
+  <div class="eq">\[\begin{aligned}
+  \E_\pi[G_{t+1} \mid S_t = s] &= \sum_a \sum_{s'} \E_\pi[G_{t+1} \mid S_{t+1}=s', s, a]\; p(S_{t+1}=s', a \mid s) && (1)\to(2) \\
+  &= \sum_a \sum_{s'} \E_\pi[G_{t+1} \mid S_{t+1}=s', s, a]\; \pi(a\mid s)\, p(s' \mid s,a) && (2)\to(3) \\
+  &= \sum_a \sum_{s'} \E_\pi[G_{t+1} \mid S_{t+1}=s']\; \pi(a\mid s)\, p(s' \mid s,a) && (3)\to(4) \\
+  &= \sum_a \sum_{s'} \pi(a\mid s)\, p(s' \mid s,a)\, v_\pi(s') && (4)\to(5)
+  \end{aligned}\]</div>
+  <ul>
+    <li>(1)→(2): <b>전확률 기댓값 법칙</b> (law of total expectation)</li>
+    <li>(2)→(3): <b>연쇄 법칙</b> (조건부 확률의 chain rule): \(p(s', a \mid s) = \pi(a\mid s)\,p(s'\mid s,a)\)</li>
+    <li>(3)→(4): <b>마르코프 성질</b> — \(S_{t+1}\)을 알면 \(s, a\)는 더 이상 필요 없음</li>
+    <li>(4)→(5): <b>가치함수의 정의</b></li>
+  </ul>
+  <div class="label thm"><span class="tag">bellman expectation eq. (v)</span>
+    <div class="eq">\[v_\pi(s) = \sum_a \sum_{s'} \pi(a \mid s)\, p(s' \mid s,a) \big[ r(s,a,s') + \gamma v_\pi(s') \big]\]</div>
+  </div>
+  <div class="note"><span class="hand">읽는 법</span>“정책으로 행동을 고르고(π), 환경이 다음 상태를 정하면(p), 그때 받는 보상 + 할인된 다음 가치”의 평균.</div>
+</section>
+
+<section class="card" id="matrix" data-toc="행렬 형태 & 해석해">
+  <h2>Matrix Form <span class="ko">행렬로 쓰기</span></h2>
+  <span class="slide-ref">p.5 – 6</span>
+  <p>MDP 복습: \(\P^{a}_{ss'} = P[S_{t+1}=s' \mid S_t=s, A_t=a]\), \(\Rc^{a}_{s} = \E[R_{t+1} \mid S_t=s, A_t=a]\). 정책 \(\pi\)로 평균을 내면 MRP처럼 쓸 수 있어요:</p>
+  <div class="eq">\[\P^{\pi}_{ss'} = \sum_{a \in \A} \pi(a\mid s)\, \P^{a}_{ss'}, \qquad \Rc^{\pi}_{s} = \sum_{a \in \A} \pi(a\mid s)\, \Rc^{a}_{s}\]</div>
+  <div class="eq">\[\begin{aligned}
+  v_\pi(s) &= \sum_a \sum_{s'} \pi(a\mid s) p(s'\mid s,a)\big[r(s,a,s') + \gamma v_\pi(s')\big] \\
+  &= \sum_a \pi(a\mid s) \sum_{s'} p(s'\mid s,a) r(s,a,s') + \gamma \sum_{s'} v_\pi(s') \sum_a \pi(a\mid s) p(s'\mid s,a) \\
+  &= \sum_{a} \pi(a\mid s) \Rc^{a}_{s} + \gamma \sum_{s'} v_\pi(s')\, \P^{\pi}_{ss'} \\
+  &= \Rc^{\pi}_{s} + \gamma \sum_{s'} \P^{\pi}_{ss'}\, v_\pi(s')
+  \end{aligned}\]</div>
+  <p>모든 상태 \(1, \dots, n\)에 대해 쌓으면:</p>
+  <div class="eq">\[\begin{bmatrix} v_\pi(1) \\ \vdots \\ v_\pi(n) \end{bmatrix} = \begin{bmatrix} \Rc^\pi_1 \\ \vdots \\ \Rc^\pi_n \end{bmatrix} + \gamma \begin{bmatrix} \P^\pi_{11} & \cdots & \P^\pi_{1n} \\ \vdots & \ddots & \vdots \\ \P^\pi_{n1} & \cdots & \P^\pi_{nn} \end{bmatrix} \begin{bmatrix} v_\pi(1) \\ \vdots \\ v_\pi(n) \end{bmatrix}\]</div>
+  <div class="label thm"><span class="tag">closed form</span>
+    <div class="eq">\[v_\pi = \Rc^\pi + \gamma \P^\pi v_\pi \;\;\Longrightarrow\;\; v_\pi = (I - \gamma \P^\pi)^{-1} \Rc^\pi\]</div>
+  </div>
+  <div class="note"><span class="hand">하지만!</span>역행렬 계산은 \(O(n^3)\) — 상태가 많으면 불가능. 그래서 4장(DP)의 반복법이 필요해요.</div>
+</section>
+
+<section class="card" id="bee-q" data-toc="벨만 기대 방정식 (q)">
+  <h2>Bellman Expectation Equation: q <span class="ko">행동가치함수</span></h2>
+  <span class="slide-ref">p.7 – 8</span>
+  <p>복습: \(v_\pi(s) = \E_\pi[G_t\mid S_t=s]\), \(q_\pi(s,a) = \E_\pi[G_t\mid S_t=s, A_t=a]\), \(v_\pi(s) = \sum_{a} \pi(a\mid s) q_\pi(s,a)\).</p>
+  <div class="eq">\[\begin{aligned}
+  q_\pi(s,a) &= \E_\pi[G_t \mid S_t=s, A_t=a] = \E_\pi[R_{t+1} + \gamma G_{t+1} \mid S_t=s, A_t=a] \\
+  &= \E_\pi[R_{t+1} \mid s, a] + \gamma\, \E_\pi[G_{t+1} \mid s, a] \\
+  &= \sum_{s'} p(s'\mid s,a)\big[ r(s,a,s') + \gamma v_\pi(s') \big] \\
+  &= \sum_{s'} p(s'\mid s,a)\Big[ r(s,a,s') + \gamma \sum_{a' \in \A(s')} \pi(a'\mid s')\, q_\pi(s',a') \Big]
+  \end{aligned}\]</div>
+  <p>여기서 \(\E_\pi[R_{t+1}\mid s,a] = \sum_{s'} p(s'\mid s,a) r(s,a,s')\), \(\E_\pi[G_{t+1}\mid s,a] = \sum_{s'} p(s'\mid s,a)\,\E_\pi[G_{t+1}\mid S_{t+1}=s'] = \sum_{s'} p(s'\mid s,a)\, v_\pi(s')\).</p>
+  <div class="label thm"><span class="tag">bellman expectation eq. (q)</span>
+    <div class="eq">\[q_\pi(s,a) = \sum_{s'} p(s' \mid s,a) \Big[ r(s,a,s') + \gamma \sum_{a' \in \A(s')} \pi(a' \mid s')\, q_\pi(s',a') \Big]\]</div>
+  </div>
+  <div class="note"><span class="hand">v 와 다른 점</span>q는 행동 \(a\)가 이미 정해져 있으니 첫 단계엔 π가 없고, <b>다음 상태에서</b> π로 다음 행동 \(a'\)를 고른다!</div>
+</section>
+
+<section class="card" id="backup" data-toc="백업 다이어그램">
+  <h2>Backup Diagram <span class="ko">백업 다이어그램</span></h2>
+  <span class="slide-ref">p.9</span>
+  <p><b>백업(backup)</b>이란 후속(successor) 정보를 이용해 가치 추정치를 갱신하는 것. 흰 원 = 상태, 검은 점 = 행동.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 560 220" font-family="Geist, sans-serif" font-size="14">
+      <g stroke="#2b1a07" stroke-width="1.3" fill="none">
+        <path d="M140 30 L80 100"/><path d="M140 30 L200 100"/>
+        <path d="M80 100 L50 180"/><path d="M80 100 L110 180"/><path d="M200 100 L170 180"/><path d="M200 100 L230 180"/>
+        <path d="M420 30 L370 110"/><path d="M420 30 L470 110"/>
+        <path d="M370 110 L340 190"/><path d="M370 110 L400 190"/><path d="M470 110 L440 190"/><path d="M470 110 L500 190"/>
+      </g>
+      <g fill="#fdfbf9" stroke="#171717" stroke-width="1.5">
+        <circle cx="140" cy="30" r="14"/><circle cx="50" cy="180" r="12"/><circle cx="110" cy="180" r="12"/><circle cx="170" cy="180" r="12"/><circle cx="230" cy="180" r="12"/>
+        <circle cx="370" cy="110" r="14"/><circle cx="470" cy="110" r="14"/>
+      </g>
+      <g fill="#171717"><circle cx="80" cy="100" r="7"/><circle cx="200" cy="100" r="7"/><circle cx="420" cy="30" r="7"/>
+        <circle cx="340" cy="190" r="6"/><circle cx="400" cy="190" r="6"/><circle cx="440" cy="190" r="6"/><circle cx="500" cy="190" r="6"/></g>
+      <g font-family="Gaegu" font-size="18" fill="#ce500a">
+        <text x="160" y="30">s</text><text x="95" y="72">π</text><text x="215" y="100">a</text><text x="210" y="148">p, r</text><text x="240" y="195">s′</text>
+        <text x="435" y="30">s, a</text><text x="455" y="75">p, r</text><text x="488" y="112">s′</text><text x="480" y="160">π</text><text x="510" y="195">a′</text>
+      </g>
+      <text x="140" y="215" text-anchor="middle" fill="#2b1a07">(a) v_π</text>
+      <text x="420" y="215" text-anchor="middle" fill="#2b1a07">(b) q_π</text>
+    </svg>
+  </figure>
+  <p>위에서 아래로 내려가며 가능한 모든 경우를 펼치고, 아래(후속 상태의 가치)에서 위로 값을 “백업”해 평균을 내요.</p>
+<div data-anim="backup"></div>
+</section>
+
+<section class="card" id="ex-be" data-toc="예제: 벨만 기대 방정식">
+  <h2>Example of Bellman Equation <span class="ko">사과 로봇, 무작위 정책</span></h2>
+  <span class="slide-ref">p.10</span>
+  <p>P(left) = P(right) = 0.5, \(\gamma = 0.9\). 벨만 기대 방정식을 두 상태에 대해 쓰면:</p>
+  <div class="eq">\[\begin{aligned}
+  v(0) &= 0.5\,[-1 + 0.9\,v(0)] + 0.5\,[1 + 0.9\,v(1)] \\
+  v(1) &= 0.5\,[0 + 0.9\,v(0)] + 0.5\,[-1 + 0.9\,v(1)]
+  \end{aligned}\]</div>
+  <p>연립방정식을 풀면 \(v(1) = v(0) - 0.5\), \(0.1\,v(0) = -0.225\) 이므로</p>
+  <div class="eq">\[v_\pi = (v_\pi(0),\, v_\pi(1)) = (-2.25,\ -2.75)\]</div>
+  <p>그다음 q는 \(q_\pi(s,a) = \sum_{s'} p(s'\mid s,a)[r + \gamma v_\pi(s')]\)로:</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>\(q_\pi\)</th><th>L</th><th>R</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>\(-1 + 0.9\,v_\pi(0) = -3.025\)</td><td>\(1 + 0.9\,v_\pi(1) = -1.475\)</td></tr>
+      <tr><td>1</td><td>\(0 + 0.9\,v_\pi(0) = -2.025\)</td><td>\(-1 + 0.9\,v_\pi(1) = -3.475\)</td></tr>
+    </tbody>
+  </table></div>
+  <p>확인: \(v_\pi(0) = 0.5(-3.025) + 0.5(-1.475) = -2.25\) ✓</p>
+</section>
+
+<h2 class="part-title"><small>part 2</small>bellman optimality equation</h2>
+
+<section class="card" id="vstar-qstar" data-toc="v* = max q* 정리">
+  <h2>\(v_*(s) = \max_a q_*(s,a)\) <span class="ko">왜 성립할까</span></h2>
+  <span class="slide-ref">p.11 – 12</span>
+  <p>복습: 최적 정책 \(\pi_*\)는 존재하고, \(v_{\pi_*} = v_*\), \(q_{\pi_*} = q_*\) (2장 p.28).</p>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>어떤 \(s^* \in \S\), \(a^* \in \A(s^*)\)에 대해 \(q_\pi(s^*, a^*) \ge v_\pi(s^*)\) 이면, 정책</p>
+    <div class="eq">\[\pi'(a\mid s) = \pi(a \mid s)\,(1 - \delta_{s,s^*}) + \delta_{s,s^*}\,\delta_{a,a^*}\]</div>
+    <p>에 대해 \(v_{\pi'}(s) \ge v_\pi(s),\ \forall s \in \S\). 여기서 \(\delta_{ij} = 1\ (i=j),\ 0\ (i \ne j)\) (Kronecker delta).</p>
+  </div>
+  <p>즉, “<b>\(s^*\)에서만</b> 행동을 \(a^*\)로 바꾸고 나머지는 그대로 둔 정책 \(\pi'\)”은 원래보다 나쁘지 않아요.</p>
+  <div class="label proof"><span class="tag">proof</span>
+    <p>임의의 \(s \in \S\)에 대해</p>
+    <div class="eq">\[\begin{aligned}
+    v_\pi(s) &= \E_{\pi}[q_\pi(s, A_t) \mid S_t = s] \\
+    &\le \E_{\pi'}[q_\pi(s, A_t) \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s] \\
+    &\le \E_{\pi'}[R_{t+1} + \gamma\, \E_{\pi'}[q_\pi(S_{t+1}, A_{t+1}) \mid S_{t+1}] \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma\, \E_{\pi'}[R_{t+2} + \gamma v_\pi(S_{t+2}) \mid S_{t+1}, A_{t+1}] \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s] \\
+    &\le \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s] = v_{\pi'}(s). \quad \blacksquare
+    \end{aligned}\]</div>
+    <p style="font-size:15px">부등호(≤)는 매번 “\(s^*\)에 도착했을 때 \(\pi\) 대신 \(a^*\)를 고르면 \(q_\pi(s^*,a^*) \ge v_\pi(s^*)\)라서 손해가 없다”는 사실을 쓴 것. 이걸 한 스텝씩 계속 펼친 거예요.</p>
+  </div>
+  <div class="note"><span class="hand">그래서 결론</span>최적 정책에서 \(q_*(s,a) \gt v_*(s)\)인 행동이 있다면 더 좋은 정책을 만들 수 있으니 모순. 따라서 최적에선 가장 좋은 행동의 가치가 곧 상태의 가치: \[v_*(s) = \max_a q_*(s,a)\]</div>
+</section>
+
+<section class="card" id="boe-v" data-toc="벨만 최적 방정식 (v*)">
+  <h2>Bellman Optimality Equation: v* <span class="ko">최적 상태가치</span></h2>
+  <span class="slide-ref">p.13</span>
+  <div class="eq">\[\begin{aligned}
+  v_*(s) &= \max_{a \in \A(s)} q_{\pi_*}(s,a) \\
+  &= \max_{a} \E_{\pi_*}[G_t \mid S_t=s, A_t=a] \\
+  &= \max_{a} \E_{\pi_*}[R_{t+1} + \gamma G_{t+1} \mid S_t=s, A_t=a] \\
+  &= \max_{a} \E[R_{t+1} + \gamma v_*(S_{t+1}) \mid S_t=s, A_t=a] \\
+  &= \max_{a} \sum_{s'} p(s'\mid s,a)\big[r(s,a,s') + \gamma v_*(s')\big]
+  \end{aligned}\]</div>
+  <div class="label thm"><span class="tag">bellman optimality eq. (v*)</span>
+    <div class="eq">\[v_*(s) = \max_{a \in \A(s)} \sum_{s'} p(s' \mid s,a)\big[r(s,a,s') + \gamma v_*(s')\big]\]</div>
+  </div>
+  <p>전이가 <b>결정적</b>이면 합이 사라져서 \(v_*(s) = \max_{a} \big[r(s,a,s') + \gamma v_*(s')\big]\).</p>
+  <div class="note"><span class="hand">기대 방정식과 비교</span>정책 확률로 평균 \(\sum_a \pi(a\mid s)\) 내던 자리가 \(\max_a\)로 바뀌었어요. max는 <b>비선형</b>이라 역행렬로 한 번에 못 풀어요!</div>
+</section>
+
+<section class="card" id="boe-q" data-toc="벨만 최적 방정식 (q*)">
+  <h2>Bellman Optimality Equation: q* <span class="ko">최적 행동가치</span></h2>
+  <span class="slide-ref">p.14</span>
+  <div class="eq">\[\begin{aligned}
+  q_*(s,a) &= \E_{\pi_*}[G_t \mid S_t=s, A_t=a] = \E_{\pi_*}[R_{t+1} + \gamma G_{t+1} \mid S_t=s, A_t=a] \\
+  &= \E_{\pi_*}[R_{t+1} \mid s, a] + \gamma\,\E_{\pi_*}[G_{t+1} \mid s, a] \\
+  &= \sum_{s'} p(s'\mid s,a)\big[r(s,a,s') + \gamma v_*(s')\big] \\
+  &= \sum_{s'} p(s'\mid s,a)\Big[r(s,a,s') + \gamma \max_{a' \in \A(s')} q_*(s',a')\Big]
+  \end{aligned}\]</div>
+  <div class="label thm"><span class="tag">bellman optimality eq. (q*)</span>
+    <div class="eq">\[q_*(s,a) = \sum_{s'} p(s' \mid s,a)\Big[r(s,a,s') + \gamma \max_{a' \in \A(s')} q_*(s',a')\Big]\]</div>
+  </div>
+  <div class="note callout-green"><span class="hand">중요!</span>이 식이 6장 <b>Q-learning</b>의 출발점이에요. 그리고 q*만 알면 최적 정책은 \(\pi_*(s) = \argmax_a q_*(s,a)\)로 바로 나옴 — 모델(p)이 필요 없음!</div>
+</section>
+
+<section class="card" id="backup-opt" data-toc="최적 백업 다이어그램">
+  <h2>Backup Diagram for Optimal Value Function</h2>
+  <span class="slide-ref">p.15</span>
+  <figure class="fig">
+    <svg viewBox="0 0 560 220" font-family="Geist, sans-serif" font-size="14">
+      <g stroke="#2b1a07" stroke-width="1.3" fill="none">
+        <path d="M140 30 L80 100"/><path d="M140 30 L200 100"/>
+        <path d="M80 100 L50 180"/><path d="M80 100 L110 180"/><path d="M200 100 L170 180"/><path d="M200 100 L230 180"/>
+        <path d="M420 30 L370 110"/><path d="M420 30 L470 110"/>
+        <path d="M370 110 L340 190"/><path d="M370 110 L400 190"/><path d="M470 110 L440 190"/><path d="M470 110 L500 190"/>
+      </g>
+      <g stroke="#ff6f1e" stroke-width="2" fill="none"><path d="M100 75 Q140 92 180 75"/><path d="M350 165 Q370 175 390 165"/><path d="M450 165 Q470 175 490 165"/></g>
+      <g fill="#fdfbf9" stroke="#171717" stroke-width="1.5">
+        <circle cx="140" cy="30" r="14"/><circle cx="50" cy="180" r="12"/><circle cx="110" cy="180" r="12"/><circle cx="170" cy="180" r="12"/><circle cx="230" cy="180" r="12"/>
+        <circle cx="370" cy="110" r="14"/><circle cx="470" cy="110" r="14"/>
+      </g>
+      <g fill="#171717"><circle cx="80" cy="100" r="7"/><circle cx="200" cy="100" r="7"/><circle cx="420" cy="30" r="7"/>
+        <circle cx="340" cy="190" r="6"/><circle cx="400" cy="190" r="6"/><circle cx="440" cy="190" r="6"/><circle cx="500" cy="190" r="6"/></g>
+      <g font-family="Gaegu" font-size="18" fill="#ce500a"><text x="128" y="80">max</text><text x="355" y="160">max</text><text x="455" y="160">max</text></g>
+      <text x="140" y="215" text-anchor="middle" fill="#2b1a07">(a) v_*</text>
+      <text x="420" y="215" text-anchor="middle" fill="#2b1a07">(b) q_*</text>
+    </svg>
+    <figcaption>주황 호(arc) = 평균 대신 max 를 취하는 자리</figcaption>
+  </figure>
+</section>
+
+<section class="card tint" id="summary" data-toc="벨만 방정식 총정리">
+  <h2>Bellman Equations <span class="ko">총정리 표</span></h2>
+  <span class="slide-ref">p.16</span>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th></th><th>Expectation (정책 π)</th><th>Optimality</th></tr></thead>
+    <tbody>
+      <tr><td>v</td><td>\(v_\pi(s) = \sum_a \sum_{s'} \pi(a\mid s) p(s'\mid s,a)[r + \gamma v_\pi(s')]\)</td><td>\(v_*(s) = \max_a \sum_{s'} p(s'\mid s,a)[r + \gamma v_*(s')]\)</td></tr>
+      <tr><td>q</td><td>\(q_\pi(s,a) = \sum_{s'} p(s'\mid s,a)[r + \gamma \sum_{a'} \pi(a'\mid s') q_\pi(s',a')]\)</td><td>\(q_*(s,a) = \sum_{s'} p(s'\mid s,a)[r + \gamma \max_{a'} q_*(s',a')]\)</td></tr>
+      <tr><td>v↔q</td><td>\(v_\pi(s) = \sum_a \pi(a\mid s) q_\pi(s,a)\)</td><td>\(v_*(s) = \max_a q_\pi(s,a)\) (= \(\max_a q_*(s,a)\))</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:15px">(표에서 \(r\)은 \(r(s,a,s')\)의 줄임)</p>
+</section>
+
+<section class="card" id="ex-bo" data-toc="예제: 벨만 최적 방정식">
+  <h2>Example of Bellman Optimality Equation</h2>
+  <span class="slide-ref">p.17</span>
+  <p>사과 로봇, \(\gamma = 0.9\). 최적 정책은 Policy 3 (0에서 R, 1에서 L)이므로 \(v_*(0) = 5.263\), \(v_*(1) = 0.9 \times 5.263 = 4.737\).</p>
+  <div class="eq">\[v_*(0) = \max\{-1 + 0.9 v_*(0),\ 1 + 0.9 v_*(1)\}, \quad v_*(1) = \max\{0 + 0.9 v_*(0),\ -1 + 0.9 v_*(1)\}\]</div>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>\(q_*\)</th><th>L</th><th>R</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>\(-1 + 0.9\,v_*(0) = 3.737\)</td><td style="background:#fff3ea">\(1 + 0.9\,v_*(1) = 5.263\) ★</td></tr>
+      <tr><td>1</td><td style="background:#fff3ea">\(0 + 0.9\,v_*(0) = 4.737\) ★</td><td>\(-1 + 0.9\,v_*(1) = 3.263\)</td></tr>
+    </tbody>
+  </table></div>
+  <p>각 행의 max(★)가 \(v_*\)와 일치: \(v_*(0) = 5.263\), \(v_*(1) = 4.737\) ✓ 그리고 ★ 위치가 곧 최적 행동.</p>
+</section>
+
+<h2 class="part-title"><small>part 3</small>existence &amp; uniqueness of v*</h2>
+
+<section class="card" id="metric" data-toc="거리 공간 (Metric Space)">
+  <h2>Metric Space <span class="ko">거리 공간</span></h2>
+  <span class="slide-ref">p.18 – 20</span>
+  <p>“최적 가치함수가 정말 존재하고 하나뿐일까?”에 답하려면 수학 도구가 몇 개 필요해요. (참고: medium “Why does the optimal policy exist?”)</p>
+  <div class="label"><span class="tag">definition</span>
+    <p><b>거리 공간</b>은 순서쌍 \((M, d)\)로, 집합 \(M\)과 거리함수(metric) \(d(x,y)\)로 이루어지며 모든 \(x,y,z \in M\)에 대해:</p>
+    <ul>
+      <li>\(d(x,y) \ge 0\) — 비음수성</li>
+      <li>\(d(x,y) = 0 \Leftrightarrow x = y\) — 식별 불가능자의 동일성</li>
+      <li>\(d(x,y) = d(y,x)\) — 대칭성</li>
+      <li>\(d(x,z) \le d(x,y) + d(y,z)\) — 삼각부등식</li>
+    </ul>
+  </div>
+  <h3>\(\R^n\)에서의 거리 예시 (\(x=(x_1..x_n), y=(y_1..y_n)\))</h3>
+  <ul>
+    <li>맨해튼 거리 (\(L_1\)): \(d(x,y) = |x_1 - y_1| + \cdots + |x_n - y_n|\)</li>
+    <li>유클리드 거리 (\(L_2\)): \(d(x,y) = \sqrt{(x_1-y_1)^2 + \cdots + (x_n-y_n)^2}\)</li>
+    <li>체비셰프 거리 (\(L_\infty\)): \(d(x,y) = \max\{|x_1-y_1|, \dots, |x_n-y_n|\}\) ← <b>앞으로 이걸 씀!</b></li>
+  </ul>
+</section>
+
+<section class="card" id="cauchy" data-toc="코시 수열 & 완비공간">
+  <h2>Cauchy Sequence &amp; Complete Metric Space <span class="ko">코시 수열, 완비공간</span></h2>
+  <span class="slide-ref">p.21 – 22</span>
+  <div class="label"><span class="tag">definition · cauchy</span>
+    <p>거리 공간 \((M,d)\)의 수열 \(x_1, x_2, \dots\)가 <b>코시</b>라는 것은, 모든 \(\varepsilon \gt 0\)에 대해 어떤 양의 정수 \(N\)이 있어서 모든 \(m, n \gt N\)에 대해 \(d(x_m, x_n) \lt \varepsilon\).</p>
+  </div>
+  <p>직관: 뒤로 갈수록 항들끼리 <b>서로</b> 한없이 가까워지는 수열.</p>
+  <div class="label"><span class="tag">definition · complete</span>
+    <p>\((M,d)\)의 모든 코시 수열이 \(M\) 안에서 수렴하면(극한이 \(M\)에 있으면) \((M,d)\)를 <b>완비(complete)</b>라고 한다.</p>
+  </div>
+  <ul>
+    <li><b>예1.</b> 유리수 \(\mathbb{Q}\) (절댓값 거리)는 완비가 아니다. \(x_1 = 1,\ x_{n+1} = \dfrac{x_n}{2} + \dfrac{1}{x_n}\) 은 모든 항이 유리수인 코시 수열이지만 \(\sqrt{2} \notin \mathbb{Q}\)로 수렴.</li>
+    <li><b>예2.</b> 실수 \(\R\), 복소수 \(\mathbb{C}\), 유클리드 공간 \(\R^n\)은 완비다. → 가치함수 벡터가 사는 \(\R^{|\S|}\)도 완비!</li>
+  </ul>
+</section>
+
+<section class="card" id="contraction" data-toc="축약사상">
+  <h2>Contraction Mapping <span class="ko">축약사상</span></h2>
+  <span class="slide-ref">p.23</span>
+  <div class="label"><span class="tag">definition</span>
+    <p>\((M,d)\)가 거리 공간일 때, 사상 \(T: M \to M\)이 <b>축약사상</b>이라는 것은 어떤 \(0 \le \gamma \lt 1\)이 있어서</p>
+    <div class="eq">\[d(T(x), T(y)) \le \gamma\, d(x,y), \quad \forall x, y \in M\]</div>
+  </div>
+  <p>직관: \(T\)를 적용할 때마다 두 점 사이 거리가 최소 \(\gamma\)배로 줄어든다 → 반복하면 \(d_n \le \gamma^n d_0 \to 0\).</p>
+  <p><b>예.</b> \(\R^1\), \(d(x,y) = |x-y|\)에서 \(T(x) = x/2\): \(d(T(x),T(y)) = |x/2 - y/2| = \tfrac12 |x-y| = \tfrac12 d(x,y)\). → \(\gamma = 1/2\)인 축약사상.</p>
+<div data-anim="contract"></div>
+</section>
+
+<section class="card" id="banach" data-toc="바나흐 고정점 정리">
+  <h2>Banach Fixed-Point Theorem <span class="ko">바나흐 고정점 정리</span></h2>
+  <span class="slide-ref">p.24</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>\((M,d)\)가 공집합이 아닌 <b>완비</b> 거리 공간이고 \(T: M \to M\)이 <b>축약사상</b>이면, \(T\)는 \(M\) 안에 <b>유일한 고정점</b> \(x^*\)를 가진다 (즉 \(T(x^*) = x^*\)).</p>
+    <p>또한 임의의 \(x_0 \in M\)에서 시작해 \(x_n = T(x_{n-1})\ (n \ge 1)\)로 수열을 만들면 \(\lim_{n\to\infty} x_n = x^*\).</p>
+  </div>
+  <div class="note"><span class="hand">왜 중요?</span>“존재” + “유일” + “아무 데서 시작해도 반복하면 찾아감” 세 가지를 한 번에 보장! 4장의 정책 평가·가치 이터레이션이 수렴하는 근거가 바로 이것.</div>
+</section>
+
+<section class="card" id="operator" data-toc="벨만 최적 연산자 T">
+  <h2>The Bellman Optimality Operator \(T\)</h2>
+  <span class="slide-ref">p.25</span>
+  <ul>
+    <li>가치함수 벡터: \(v = [v(s) : s \in \S] \in \R^{|\S|}\)</li>
+    <li>벨만 최적 방정식: \(v_*(s) = \max_{a} \sum_{s'} p(s'\mid s,a)[r(s,a,s') + \gamma v_*(s')]\)</li>
+    <li>벨만 최적 연산자 \(T: \R^{|\S|} \to \R^{|\S|}\):
+      <div class="eq">\[(Tv)(s) = \max_{a \in \A(s)} \E\big[R_{t+1} + \gamma v(S_{t+1}) \mid S_t = s, A_t = a\big]\]</div></li>
+    <li>그러면 벨만 최적 방정식은 \(v_* = T v_*\) — 즉 <b>\(v_*\)는 \(T\)의 고정점</b>!</li>
+  </ul>
+</section>
+
+<section class="card" id="max-lemma" data-toc="max 연산자의 성질 (보조정리)">
+  <h2>A Property of the Max Operator <span class="ko">보조정리</span></h2>
+  <span class="slide-ref">p.26</span>
+  <div class="label thm"><span class="tag">lemma</span>
+    <p>유한집합 \(A\)와 두 함수 \(f_1, f_2: A \to \R\)에 대해</p>
+    <div class="eq">\[\Big|\max_{a\in A} f_1(a) - \max_{a\in A} f_2(a)\Big| \le \max_{a \in A} |f_1(a) - f_2(a)|\]</div>
+  </div>
+  <div class="label proof"><span class="tag">proof</span>
+    <p>i) \(a_1\)을 \(f_1(a_1) = \max_a f_1(a)\)인 점이라 하면</p>
+    <div class="eq">\[\max_a f_1(a) - \max_a f_2(a) = f_1(a_1) - \max_a f_2(a) \le f_1(a_1) - f_2(a_1) \le \max_a\big(f_1(a) - f_2(a)\big) \le \max_a |f_1(a) - f_2(a)|\]</div>
+    <p>ii) 같은 방법으로 \(f_2(a_2) = \max_a f_2(a)\)인 \(a_2\)를 잡으면 \(\max_a f_2(a) - \max_a f_1(a) \le \max_a |f_1(a) - f_2(a)|\).</p>
+    <p>두 부등식을 합치면 절댓값 부등식 성립. \(\blacksquare\)</p>
+  </div>
+</section>
+
+<section class="card" id="exist-unique" data-toc="존재성·유일성 증명">
+  <h2>Existence and Uniqueness of Optimal Value Function</h2>
+  <span class="slide-ref">p.27</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>거리 공간 \((\R^{|\S|}, \|\cdot\|_\infty)\) 위에서 벨만 최적 연산자 \(T\)는 축약사상이다. 즉</p>
+    <div class="eq">\[\|Tv - Tv'\|_\infty \le \gamma\, \|v - v'\|_\infty, \quad \forall v, v' \in \R^{|\S|}\]</div>
+  </div>
+  <div class="label proof"><span class="tag">proof</span>
+    <div class="eq">\[\begin{aligned}
+    \|Tv - Tv'\|_\infty &= \max_{s} |Tv(s) - Tv'(s)| \\
+    &= \max_s \Big| \max_a \E[R_{t+1} + \gamma v(S_{t+1}) \mid s,a] - \max_a \E[R_{t+1} + \gamma v'(S_{t+1}) \mid s,a] \Big| \\
+    &\le \max_s \max_a \Big| \E[R_{t+1} + \gamma v(S_{t+1}) \mid s,a] - \E[R_{t+1} + \gamma v'(S_{t+1}) \mid s,a] \Big| && \text{(보조정리)} \\
+    &= \max_s \max_a \gamma\, \big|\E[v(S_{t+1}) - v'(S_{t+1}) \mid s,a]\big| && (R \text{ 상쇄}) \\
+    &\le \max_s \max_a \gamma\, \E\big[|v(S_{t+1}) - v'(S_{t+1})| \mid s,a\big] \\
+    &\le \max_s \max_a \gamma\, \E\big[\|v - v'\|_\infty \mid s,a\big] \\
+    &= \gamma\, \|v - v'\|_\infty. \quad \blacksquare
+    \end{aligned}\]</div>
+  </div>
+  <p>따라서 \(T\)는 \(\gamma\)-축약사상이고, \(\R^{|\S|}\)는 완비이므로 <b>바나흐 고정점 정리</b>에 의해:</p>
+  <ul>
+    <li>\(v_* = Tv_*\)를 만족하는 \(v_*\)가 <b>존재</b>하고 <b>유일</b>하다.</li>
+    <li>아무 \(v_0\)에서 시작해 \(v_{k+1} = Tv_k\)를 반복하면 \(v_*\)로 수렴한다 → 4장 <b>가치 이터레이션</b>!</li>
+  </ul>
+  <div data-widget="contraction"></div>
+</section>
+
+<section class="card tint" id="quiz03" data-toc="셀프 체크 퀴즈">
+  <h2>Self-check <span class="ko">스스로 확인하기</span></h2>
+  <details class="quiz"><summary>벨만 기대 방정식 유도에서 (3)→(4) 단계에 쓰인 성질은?</summary>
+    <div class="ans">마르코프 성질. \(S_{t+1}=s'\)이 주어지면 \(G_{t+1}\)의 기댓값은 이전 \(s, a\)와 무관.</div></details>
+  <details class="quiz"><summary>\(v_\pi = (I-\gamma \P^\pi)^{-1}\Rc^\pi\) 를 실제로 잘 안 쓰는 이유는?</summary>
+    <div class="ans">상태 수 \(n\)에 대해 역행렬 계산이 \(O(n^3)\)이라 큰 문제에서 비현실적. 또 벨만 <b>최적</b> 방정식은 max 때문에 비선형이라 이 방식으로 풀 수 없음.</div></details>
+  <details class="quiz"><summary>사과 로봇 무작위 정책에서 \(q_\pi(1, L)\)은?</summary>
+    <div class="ans">\(0 + 0.9 \times v_\pi(0) = 0.9 \times (-2.25) = -2.025\)</div></details>
+  <details class="quiz"><summary>벨만 최적 연산자가 축약사상임을 보일 때, 보상 항 \(R_{t+1}\)은 어떻게 처리되나요?</summary>
+    <div class="ans">\(v\)와 \(v'\)에 대한 두 기댓값에서 똑같이 나타나서 빼면 상쇄돼요. 남는 건 \(\gamma(v - v')\)뿐.</div></details>
+  <details class="quiz"><summary>바나흐 고정점 정리의 두 가정은?</summary>
+    <div class="ans">(1) 공집합이 아닌 완비 거리 공간, (2) 그 위의 축약사상.</div></details>
+  <details class="quiz"><summary>\(\mathbb{Q}\)가 완비가 아님을 보이는 예시 수열은 어디로 수렴하나요?</summary>
+    <div class="ans">\(x_{n+1} = x_n/2 + 1/x_n\)의 극한 \(L\)은 \(L = L/2 + 1/L \Rightarrow L^2 = 2\), 즉 \(\sqrt 2\) (무리수).</div></details>
+</section>
+
+<nav class="ch-nav"></nav>
+    </main>
+  </div>
+</div>
+</body>
+</html>

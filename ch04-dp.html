@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04. Dynamic Programming — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/widgets.js"></script>
+<script defer src="assets/anim.js"></script>
+<script defer src="assets/notes.js"></script>
+</head>
+<body data-ch="04">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">lecture 04 · 모델을 알 때 MDP 풀기</span>
+    <h1 class="display">dynamic<br>programming</h1>
+    <p class="lede">전이확률과 보상을 <span class="mk">다 안다면</span>, 벨만 방정식을 반복해서 적용하는 것만으로 가치함수와 최적 정책을 정확히 구할 수 있어요. 정책 평가 → 정책 이터레이션 → 가치 이터레이션 → 비동기 DP 순서로 가요.</p>
+    <div class="meta">원본: 04.Dynamic_Programming.pdf (53 slides) · Hyelim Shin, PNU IE</div>
+    <div data-sticker="ghost" data-rot="10" style="right:8%;top:70px;width:70px;height:80px"></div>
+    <div data-sticker="bolt" data-rot="-12" style="right:19%;top:210px;width:50px;height:66px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<h2 class="part-title"><small>part 1</small>dynamic programming</h2>
+
+<section class="card" id="why-dp" data-toc="가치함수를 어떻게 계산?">
+  <h2>How to Compute the Value Function <span class="ko">왜 DP?</span></h2>
+  <span class="slide-ref">p.2</span>
+  <p>정책 \(\pi(a\mid s)\), 전이 \(p(s'\mid s,a)\), 보상 \(r(s,a,s')\)를 알면 벨만 방정식이 연립방정식이 되고, 풀면 \(v_\pi(s)\)가 나와요. 그런데 큰 문제에서 연립방정식을 푸는 건 너무 어려워요 — <b>\(O(|\S|^3)\)</b>.</p>
+  <div class="roadmap">
+    <span class="node">p, r, π</span><span class="arr">→</span><span class="node">Bellman Equation</span><span class="arr">→</span><span class="node">Simultaneous Equations</span><span class="arr">→</span><span class="node">\(v_\pi(s)\)</span>
+  </div>
+  <p>그래서 대신 쓰는 것이 <b>동적 계획법(Dynamic Programming, DP)</b>.</p>
+</section>
+
+<section class="card" id="dp-def" data-toc="DP의 3가지 성질 (피보나치)">
+  <h2>Dynamic Programming <span class="ko">동적 계획법</span></h2>
+  <span class="slide-ref">p.3 – 4</span>
+  <p>DP는 다음 세 성질을 이용해 복잡한 문제를 푸는 방법이에요.</p>
+  <ol>
+    <li><b>Substructure (부분 구조)</b>: 원래 문제를 더 작은 부분 문제들로 쪼갠다.</li>
+    <li><b>Table structure (테이블 구조)</b>: 각 부분 문제의 해를 테이블에 저장해 여러 번 재사용한다.</li>
+    <li><b>Bottom-up computation (상향식 계산)</b>: 테이블을 이용해 작은 문제의 해를 합쳐 더 큰 문제를 풀고, 결국 원래 문제의 해에 도달한다.</li>
+  </ol>
+  <h3>예시: 피보나치 수</h3>
+  <div class="cols">
+    <div><p style="font-size:15px">슬라이드의 재귀 버전 (같은 값을 중복 계산 — 지수 시간)</p>
+<pre class="code"><span class="k">def</span> Fibonacci(n):
+    <span class="k">if</span> n &lt;= 1:
+        <span class="k">return</span> 1
+    <span class="k">else</span>:
+        <span class="k">return</span> (Fibonacci(n-1) + Fibonacci(n-2))</pre></div>
+    <div><p style="font-size:15px">DP 버전 (테이블 + 상향식 — 선형 시간)</p>
+<pre class="code"><span class="k">def</span> fib_dp(n):
+    table = [1, 1]            <span class="c"># 테이블</span>
+    <span class="k">for</span> i <span class="k">in</span> range(2, n+1):  <span class="c"># bottom-up</span>
+        table.append(table[i-1] + table[i-2])
+    <span class="k">return</span> table[n]</pre></div>
+  </div>
+</section>
+
+<section class="card" id="dp-v" data-toc="DP로 가치함수 평가">
+  <h2>Evaluate Value Function using DP</h2>
+  <span class="slide-ref">p.5</span>
+  <p>\(k\)-스텝까지만 본 기대 리턴을 \(v_k\)라고 하면:</p>
+  <div class="eq">\[v_k(s) = \E_\pi\Big[\sum_{i=0}^{k-1} \gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
+  <div class="eq">\[v_k(s) = \sum_a \sum_{s'} \pi(a\mid s)\, p(s'\mid s,a)\big[r(s,a,s') + \gamma v_{k-1}(s')\big], \qquad \lim_{k\to\infty} v_k(s) = v_\pi(s)\]</div>
+  <p>\(v_k\)는 DP의 세 성질을 만족해요:</p>
+  <ul>
+    <li><b>Substructure</b>: \(k\)-스텝 기대 리턴 = 보상 + 다음 상태에서의 \((k-1)\)-스텝 기대 리턴</li>
+    <li><b>Table structure</b>: \(v_{k-1}(s')\)는 한 번 계산되면 \(s'\)로 전이할 수 있는 모든 상태 \(s\)가 재사용</li>
+    <li><b>Bottom-up</b>: \(v_0 \equiv 0\)에서 시작해 \(v_1, v_2, \dots\)를 계산. 각 sweep은 \((k-1)\)-horizon 테이블로 \(k\)-horizon 문제를 정확히 품</li>
+  </ul>
+</section>
+
+<section class="card" id="exp-contraction" data-toc="벨만 기대 연산자 = 축약사상">
+  <h2>Bellman Expectation Operator is Contraction Mapping</h2>
+  <span class="slide-ref">p.6 – 7</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>\((\R^{|\S|}, \|\cdot\|_\infty)\)에서 벨만 기대 연산자 \(T^\pi: \R^{|\S|}\to\R^{|\S|}\)는 축약사상이다:</p>
+    <div class="eq">\[\|T^\pi v - T^\pi v'\|_\infty \le \gamma\, \|v - v'\|_\infty, \quad \forall v, v'\]</div>
+  </div>
+  <div class="label proof"><span class="tag">proof</span>
+    <div class="eq">\[\begin{aligned}
+    |T^\pi v(s) - T^\pi v'(s)| &= \big|\E_\pi[R_{t+1} + \gamma v(S_{t+1}) \mid s] - \E_\pi[R_{t+1} + \gamma v'(S_{t+1}) \mid s]\big| \\
+    &= \big|\gamma\, \E_\pi[v(S_{t+1}) - v'(S_{t+1}) \mid s]\big| \\
+    &\le \gamma\, \E_\pi\big[|v(S_{t+1}) - v'(S_{t+1})| \mid s\big] \\
+    &\le \gamma\, \E_\pi\big[\|v - v'\|_\infty \mid s\big] = \gamma\, \|v - v'\|_\infty
+    \end{aligned}\]</div>
+    <p>모든 \(s\)에 대해 성립하므로 \(\|T^\pi v - T^\pi v'\|_\infty \le \gamma \|v - v'\|_\infty\). 즉 \(T^\pi\)는 \(\gamma\)-축약사상. \(\blacksquare\)</p>
+    <p style="font-size:15px">(3장의 최적 연산자 증명과 달리 max가 없어서 보조정리 없이 바로 됨!)</p>
+  </div>
+  <div class="note"><span class="hand">바나흐 고정점 정리 다시 소환</span>완비 공간 + 축약사상 ⇒ 유일한 고정점이 존재하고 반복하면 수렴. <b>벨만 기대 방정식은 고정점 \(v_\pi\)를 정의</b>하므로, \(v_k = T^\pi v_{k-1}\)을 반복하면 \(\lim_{k\to\infty} v_k = v_\pi\).</div>
+</section>
+
+<h2 class="part-title"><small>part 2</small>policy evaluation</h2>
+
+<section class="card" id="ipe" data-toc="반복적 정책 평가">
+  <h2>Iterative Policy Evaluation <span class="ko">반복적 정책 평가</span></h2>
+  <span class="slide-ref">p.8</span>
+  <ul>
+    <li><b>문제</b>: 주어진 정책 \(\pi\)를 평가하기 (= \(v_\pi\) 구하기)</li>
+    <li><b>해법</b>: 벨만 기대 백업을 반복 적용</li>
+    <li>\(v_1 \to v_2 \to \cdots \to v_\pi\)</li>
+    <li><b>동기식(synchronous) 백업</b> 사용:
+      <ul><li>매 반복 \(k+1\)마다</li><li>모든 상태 \(s \in \S\)에 대해</li><li>\(v_k(s')\)로부터 \(v_{k+1}(s)\)를 갱신</li><li>여기서 \(s'\)은 \(s\)의 후속 상태</li></ul></li>
+  </ul>
+<pre class="code"><span class="c"># Iterative Policy Evaluation (동기식)</span>
+V = [0] * n_states
+<span class="k">for</span> k <span class="k">in</span> range(max_iter):
+    V_new = [0] * n_states
+    <span class="k">for</span> s <span class="k">in</span> states:
+        V_new[s] = sum(pi[s][a] * p[s][a][s2] * (r[s][a][s2] + gamma * V[s2])
+                       <span class="k">for</span> a <span class="k">in</span> actions <span class="k">for</span> s2 <span class="k">in</span> states)
+    <span class="k">if</span> max(abs(V_new[s] - V[s]) <span class="k">for</span> s <span class="k">in</span> states) &lt; theta: <span class="k">break</span>
+    V = V_new</pre>
+</section>
+
+<section class="card" id="frozenlake" data-toc="FrozenLake 과제">
+  <h2>FrozenLake Task</h2>
+  <span class="slide-ref">p.9</span>
+<pre class="code"><span class="k">import</span> gymnasium <span class="k">as</span> gym
+env = gym.make(<span class="s">'FrozenLake-v1'</span>, is_slippery=<span class="k">False</span>)</pre>
+  <div class="cols">
+    <div>
+      <ul>
+        <li>\(\S = \{0, 1, \dots, 15\}\) (4×4 격자)</li>
+        <li>\(\A = \{L, D, R, U\}\) (←, ↓, →, ↑)</li>
+        <li>전이는 결정적 (<code class="i">is_slippery=False</code>)</li>
+        <li>\(\gamma = 0.9\)</li>
+        <li>목표(G) 도달 보상 = 10, 그 외 0</li>
+        <li>H(구멍)와 G는 종료 상태. 벽 쪽으로 가면 제자리.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="gw" style="grid-template-columns:repeat(4,auto)">
+        <div class="cell start"><span class="idx">0</span>S</div><div class="cell"><span class="idx">1</span>F</div><div class="cell"><span class="idx">2</span>F</div><div class="cell"><span class="idx">3</span>F</div>
+        <div class="cell"><span class="idx">4</span>F</div><div class="cell hole"><span class="idx">5</span>H</div><div class="cell"><span class="idx">6</span>F</div><div class="cell hole"><span class="idx">7</span>H</div>
+        <div class="cell"><span class="idx">8</span>F</div><div class="cell"><span class="idx">9</span>F</div><div class="cell"><span class="idx">10</span>F</div><div class="cell hole"><span class="idx">11</span>H</div>
+        <div class="cell hole"><span class="idx">12</span>H</div><div class="cell"><span class="idx">13</span>F</div><div class="cell"><span class="idx">14</span>F</div><div class="cell goal"><span class="idx">15</span>G</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="pe-walk" data-toc="정책 평가 따라가기 (k=0→∞)">
+  <h2>Policy Evaluation on FrozenLake <span class="ko">무작위 정책 평가</span></h2>
+  <span class="slide-ref">p.10 – 18</span>
+  <p>정책 = 상하좌우 각각 0.25인 무작위 정책. \(v_0 = 0\)에서 시작해 벨만 기대 백업을 반복해요.</p>
+  <h3>손으로 따라가 보기</h3>
+  <ul>
+    <li><b>k=1</b>: 14번 칸에서 →를 하면(확률 0.25) G 도착, 보상 10 → \(v_1(14) = 0.25 \times 10 = 2.5\). 나머지는 모두 0.</li>
+    <li><b>k=2</b>: \(v_2(10) = 0.25 \times (0 + 0.9 \times 2.5) = 0.56\) (↓로 14에 감), \(v_2(13) = 0.56\) (→로 14), \(v_2(14) = 0.25\times10 + 0.25\times 0.9 \times 2.5 = 3.06\) (→ 목표, ↓ 벽이라 제자리 14).</li>
+    <li>이렇게 목표 근처부터 가치가 퍼져 나가요 (“bottom-up”).</li>
+  </ul>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>k</th><th>row 0</th><th>row 1</th><th>row 2</th><th>row 3</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0 0 0 0</td><td>0 − 0 −</td><td>0 0 0 −</td><td>− 0 2.5 +</td></tr>
+      <tr><td>2</td><td>0 0 0 0</td><td>0 − 0 −</td><td>0 0 0.56 −</td><td>− 0.56 3.06 +</td></tr>
+      <tr><td>3</td><td>0 0 0 0</td><td>0 − 0.13 −</td><td>0 0.25 0.69 −</td><td>− 0.82 3.44 +</td></tr>
+      <tr><td>5</td><td>0 0.01 0.04 0.01</td><td>0.01 − 0.2 −</td><td>0.09 0.43 0.91 −</td><td>− 1.12 3.73 +</td></tr>
+      <tr><td>10</td><td>0.03 0.03 0.09 0.03</td><td>0.05 − 0.25 −</td><td>0.17 0.56 1.05 −</td><td>− 1.28 3.9 +</td></tr>
+      <tr class="hl"><td>∞</td><td>0.04 0.04 0.1 0.04</td><td>0.07 − 0.26 −</td><td>0.19 0.58 1.07 −</td><td>− 1.3 3.91 +</td></tr>
+    </tbody>
+  </table></div>
+  <p>그리고 수렴한 \(v_\pi\)에 대해 <b>그리디 정책</b>(가장 가치가 높은 다음 칸으로 가는 정책)을 그려 보면, 무작위 정책을 평가만 했을 뿐인데도 꽤 괜찮은 정책이 나와요!</p>
+  <div data-widget="frozenlake" data-mode="eval"></div>
+</section>
+
+<h2 class="part-title"><small>part 3</small>policy iteration</h2>
+
+<section class="card" id="improve" data-toc="정책 개선하기">
+  <h2>How to Improve a Policy <span class="ko">정책 개선</span></h2>
+  <span class="slide-ref">p.19</span>
+  <p>정책 \(\pi\)가 주어지면</p>
+  <ol>
+    <li><b>정책을 평가</b>: \(v_\pi(s) = \E[R_{t+1} + \gamma R_{t+2} + \cdots \mid S_t = s]\)</li>
+    <li><b>\(v_\pi\)에 대해 그리디하게 행동</b>하여 정책 개선: \(\pi' = \text{greedy}(v_\pi)\)</li>
+  </ol>
+  <ul>
+    <li>작은 FrozenLake에서는 개선된 정책이 바로 최적이었다: \(\pi' = \pi_*\)</li>
+    <li>일반적으로는 평가/개선을 여러 번 반복해야 한다.</li>
+    <li>하지만 이 <b>정책 이터레이션</b> 과정은 항상 \(\pi_*\)로 수렴한다.</li>
+  </ul>
+</section>
+
+<section class="card" id="pi-walk" data-toc="정책 이터레이션 따라가기">
+  <h2>Policy Iteration on FrozenLake</h2>
+  <span class="slide-ref">p.20 – 27</span>
+  <p>매 스텝 가치를 갱신하고 그 가치에 대한 그리디 정책 \(\pi'\)로 바로 바꾸는 과정을 따라가면 (슬라이드의 값):</p>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>k</th><th>row 0</th><th>row 1</th><th>row 2</th><th>row 3</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0 0 0 0</td><td>0 − 0 −</td><td>0 0 0 −</td><td>− 0 10 +</td></tr>
+      <tr><td>2</td><td>0 0 0 0</td><td>0 − 0 −</td><td>0 0 9 −</td><td>− 9 10 +</td></tr>
+      <tr><td>3</td><td>0 0 0 0</td><td>0 − 8.1 −</td><td>0 8.1 9 −</td><td>− 9 10 +</td></tr>
+      <tr><td>4</td><td>0 0 7.29 0</td><td>0 − 8.1 −</td><td>7.29 8.1 9 −</td><td>− 9 10 +</td></tr>
+      <tr><td>5</td><td>0 6.56 7.29 6.56</td><td>6.56 − 8.1 −</td><td>7.29 8.1 9 −</td><td>− 9 10 +</td></tr>
+      <tr class="hl"><td>6</td><td>5.9 6.56 7.29 6.56</td><td>6.56 − 8.1 −</td><td>7.29 8.1 9 −</td><td>− 9 10 +</td></tr>
+    </tbody>
+  </table></div>
+  <p>값이 \(10, 9, 8.1, 7.29, 6.56, 5.9 = 10 \times 0.9^{d}\) (\(d\) = 목표까지 남은 스텝 − 1) 처럼 목표에서 멀어질수록 0.9배씩 줄어요. 결정적 환경 + 최단경로 정책이니까!</p>
+  <div class="note"><span class="hand">p.32 필기</span>\(k=5\)일 때 \(V_k(s) \ne v_\pi(s)\)지만 <b>그리디 정책은 \(k=\infty\)와 같다</b>! → 가치가 완전히 수렴할 때까지 기다릴 필요가 없을 수도 있다 (→ GPI, 가치 이터레이션의 아이디어).</div>
+  <div data-widget="frozenlake" data-mode="pi"></div>
+</section>
+
+<section class="card" id="pi" data-toc="Policy Iteration 정의">
+  <h2>Policy Iteration <span class="ko">정책 이터레이션</span></h2>
+  <span class="slide-ref">p.28 – 29</span>
+  <figure class="fig">
+    <svg viewBox="0 0 560 200" font-family="Geist, sans-serif" font-size="15">
+      <defs><marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2b1a07"/></marker></defs>
+      <rect x="40" y="70" width="90" height="56" rx="20" fill="#fdfbf9" stroke="#171717" stroke-width="1.5"/>
+      <rect x="430" y="70" width="90" height="56" rx="20" fill="#fdfbf9" stroke="#171717" stroke-width="1.5"/>
+      <text x="85" y="104" text-anchor="middle" font-size="22" fill="#2b1a07">π</text>
+      <text x="475" y="104" text-anchor="middle" font-size="22" fill="#2b1a07">V</text>
+      <path d="M130 80 C 230 10, 330 10, 430 80" fill="none" stroke="#2b1a07" stroke-width="1.6" marker-end="url(#pa)"/>
+      <path d="M430 116 C 330 190, 230 190, 130 116" fill="none" stroke="#2b1a07" stroke-width="1.6" marker-end="url(#pa)"/>
+      <text x="280" y="30" text-anchor="middle" font-family="Gaegu" font-size="21" fill="#ce500a">evaluation: V → v_π</text>
+      <text x="280" y="190" text-anchor="middle" font-family="Gaegu" font-size="21" fill="#ce500a">improvement: π → greedy(V)</text>
+    </svg>
+    <figcaption>π₀ → v_π₀ → π₁ → v_π₁ → ⋯ → π* , v*</figcaption>
+  </figure>
+  <ul>
+    <li><b>Policy evaluation</b>: \(v_\pi\) 추정 — 반복적 정책 평가</li>
+    <li><b>Policy improvement</b>: \(\pi' \ge \pi\) 생성 — 그리디 정책 개선</li>
+  </ul>
+<pre class="code"><span class="c"># Policy Iteration</span>
+pi = arbitrary_deterministic_policy()
+<span class="k">while</span> <span class="k">True</span>:
+    V = policy_evaluation(pi)                    <span class="c"># 1. 평가 (수렴할 때까지)</span>
+    new_pi = {s: argmax_a( sum_s2 p(s2|s,a) * (r(s,a,s2) + gamma*V[s2]) ) <span class="k">for</span> s <span class="k">in</span> S}
+    <span class="k">if</span> new_pi == pi: <span class="k">break</span>                      <span class="c"># 2. 개선. 안 바뀌면 최적!</span>
+    pi = new_pi</pre>
+<div data-anim="pi"></div>
+</section>
+
+<section class="card" id="pit" data-toc="정책 개선 정리 + 증명">
+  <h2>Policy Improvement Theorem <span class="ko">정책 개선 정리</span></h2>
+  <span class="slide-ref">p.30</span>
+  <div class="label thm"><span class="tag">theorem</span>
+    <p>\(\pi\)와 \(\pi'\)가 임의의 결정적 정책 쌍일 때,</p>
+    <div class="eq">\[q_\pi(s, \pi'(s)) \ge v_\pi(s) = \sum_a \pi(a\mid s)\, q_\pi(s,a)\quad \forall s \in \S \;\;\Longrightarrow\;\; v_{\pi'}(s) \ge v_\pi(s)\quad \forall s \in \S\]</div>
+  </div>
+  <div class="label proof"><span class="tag">proof</span>
+    <div class="eq">\[\begin{aligned}
+    v_\pi(s) &\le q_\pi(s, \pi'(s)) = \E_{\pi'}[q_\pi(s, A_t) \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s] \\
+    &\le \E_{\pi'}[R_{t+1} + \gamma q_\pi(S_{t+1}, \pi'(S_{t+1})) \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma\, \E_{\pi'}[R_{t+2} + \gamma v_\pi(S_{t+2}) \mid S_{t+1}, A_{t+1}] \mid S_t = s] \\
+    &= \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s] \\
+    &\le \E_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s] = v_{\pi'}(s). \quad\blacksquare
+    \end{aligned}\]</div>
+  </div>
+  <div class="note"><span class="hand">한 줄 요약</span>“한 스텝만 \(\pi'\)를 따르고 나머진 \(\pi\)를 따라도 손해가 없다면, 계속 \(\pi'\)를 따르면 더 좋다.”</div>
+</section>
+
+<section class="card" id="pi-converge" data-toc="PI가 최적에 수렴하는 이유">
+  <h2>Why Policy Iteration Reaches \(\pi_*\) <span class="ko">수렴 논리</span></h2>
+  <span class="slide-ref">p.31 – 32</span>
+  <p>3장의 정리(\(q_\pi(s^*,a^*) \ge v_\pi(s^*)\)이면 그 상태만 바꾼 정책이 더 좋다)를 모든 상태에 동시에 적용한 게 그리디 개선이에요.</p>
+  <ul>
+    <li>\(\pi'(s) = \argmax_{a \in \A} q_\pi(s,a)\) 로 개선. 그러면 \(q_\pi(s,\pi'(s)) = \max_a q_\pi(s,a) \ge v_\pi(s)\) → 정책 개선 정리에 의해 \(v_{\pi'} \ge v_\pi\).</li>
+    <li>결정적 정책은 <b>유한 개</b>이고, \(\pi' = \pi\)가 될 때까지 매 단계가 엄격히 개선되므로 <b>유한 번</b> 안에 끝난다.</li>
+    <li>개선이 멈추면:
+      <div class="eq">\[q_\pi(s, \pi'(s)) = \max_{a \in \A} q_\pi(s,a) = q_\pi(s, \pi(s)) = v_\pi(s)\]</div>
+      → 이건 바로 <b>벨만 최적 방정식</b> \(v_\pi(s) = \max_a q_\pi(s,a)\)!</li>
+    <li>따라서 모든 \(s\)에 대해 \(v_\pi(s) = v_*(s)\) (유일한 고정점이니까), 즉 \(\pi\)는 <b>최적 정책</b>.</li>
+  </ul>
+</section>
+
+<section class="card tint" id="gpi" data-toc="일반화된 정책 이터레이션 (GPI)">
+  <h2>Generalized Policy Iteration <span class="ko">GPI</span></h2>
+  <span class="slide-ref">p.33</span>
+  <ul>
+    <li><b>Policy evaluation</b>: \(v_\pi\) 추정 — <b>어떤</b> 정책 평가 방법이든</li>
+    <li><b>Policy improvement</b>: \(\pi' \ge \pi\) 생성 — <b>어떤</b> 정책 개선 방법이든</li>
+  </ul>
+  <p>평가를 끝까지(수렴까지) 하지 않고 몇 번만 해도 되고, 개선을 그리디가 아닌 다른 방식으로 해도 돼요. 평가와 개선이 서로 밀고 당기다 결국 \(v_*, \pi_*\)에서 만나는 이 큰 틀을 <b>GPI</b>라고 불러요. → 5장 MC 제어, 6장 SARSA도 전부 GPI!</p>
+<div data-anim="gpi"></div>
+</section>
+
+<h2 class="part-title"><small>part 4</small>value iteration</h2>
+
+<section class="card" id="vi-idea" data-toc="가치 이터레이션 아이디어">
+  <h2>Value Iteration <span class="ko">개선 + 평가를 한 번에</span></h2>
+  <span class="slide-ref">p.35</span>
+  <p>결정적 정책을 \(\mu\)라고 하면 (π: stochastic, μ: deterministic), 정책 이터레이션의 두 단계는</p>
+  <div class="eq">\[\textbf{Improvement: }\ \mu(s) = \argmax_a \sum_{s'} p(s'\mid s,a)\{r(s,a,s') + \gamma V_k(s')\}\]</div>
+  <div class="eq">\[\textbf{Evaluation: }\ V_{k+1}(s) = \sum_{s'} p(s'\mid s,\mu(s))\{r(s,\mu(s),s') + \gamma V_k(s')\}\]</div>
+  <p>그런데 \(\mu(s)\)는 괄호 안을 최대화하는 \(a\)니까, evaluation 식에 대입하면 그냥 그 최댓값이에요. 합치면:</p>
+  <div class="label thm"><span class="tag">value iteration update</span>
+    <div class="eq">\[V_{k+1}(s) = \max_a \sum_{s'} p(s'\mid s,a)\{r(s,a,s') + \gamma V_k(s')\}\]</div>
+  </div>
+  <div class="note"><span class="hand">필기</span>여기엔 명시적인 policy가 없다! 정책 개선과 평가를 한 번의 max 연산으로 해결.</div>
+</section>
+
+<section class="card" id="vi-dp" data-toc="DP로 최적 가치 찾기">
+  <h2>Find Optimal Value Function using DP</h2>
+  <span class="slide-ref">p.36</span>
+  <p>\(k\)-스텝 최적 기대 리턴:</p>
+  <div class="eq">\[v_k(s) = \max_\pi \E_\pi\Big[\sum_{i=0}^{k-1}\gamma^i R_{t+1+i} \;\Big|\; S_t = s\Big]\]</div>
+  <div class="eq">\[v_k(s) = \max_a \sum_{s'} p(s'\mid s,a)\big[r(s,a,s') + \gamma v_{k-1}(s')\big], \qquad \lim_{k\to\infty} v_k(s) = v_*(s)\]</div>
+  <ul>
+    <li><b>Substructure</b>: 최적 \(k\)-스텝 리턴 = 가장 좋은 첫 행동의 보상 + 다음 상태의 최적 \((k-1)\)-스텝 리턴 (<b>최적성의 원리</b>, principle of optimality)</li>
+    <li><b>Table structure</b>: \(v_{k-1}(s')\)는 한 번 계산되어 여러 \(s\)가 재사용</li>
+    <li><b>Bottom-up</b>: \(v_0 \equiv 0\)에서 \(v_1, v_2, \dots\)</li>
+  </ul>
+  <div class="note"><span class="hand">수렴 근거</span>3장에서 증명한 대로 벨만 최적 연산자 \(T\)는 \(\gamma\)-축약사상 (p.37 증명 동일) → 바나흐 고정점 정리 (p.38) → 벨만 최적 방정식은 고정점 \(v_*\)를 정의하고 \(v_k \to v_*\).</div>
+</section>
+
+<section class="card" id="vi" data-toc="Value Iteration 알고리즘">
+  <h2>Value Iteration Algorithm</h2>
+  <span class="slide-ref">p.39 – 40</span>
+  <div class="cols">
+    <div class="box"><h4>Value Iteration</h4>
+      <ul><li>문제: 최적 정책 \(\pi_*\) 찾기</li><li>해법: <b>벨만 최적 백업</b> 반복</li><li>\(v_1 \to v_2 \to \cdots \to v_*\)</li><li>동기식 백업 (모든 s, \(v_k(s')\)로 \(v_{k+1}(s)\))</li><li><b>명시적 정책이 없음</b></li></ul></div>
+    <div class="box"><h4>Iterative Policy Evaluation</h4>
+      <ul><li>문제: 주어진 정책 \(\pi\) 평가</li><li>해법: <b>벨만 기대 백업</b> 반복</li><li>\(v_1 \to v_2 \to \cdots \to v_\pi\)</li><li>동기식 백업</li><li>정책이 고정되어 있음</li></ul></div>
+  </div>
+<pre class="code"><span class="c"># Value Iteration</span>
+V = [0] * n_states
+<span class="k">while</span> <span class="k">True</span>:
+    V_new = [max(sum(p[s][a][s2] * (r[s][a][s2] + gamma * V[s2]) <span class="k">for</span> s2 <span class="k">in</span> S)
+                 <span class="k">for</span> a <span class="k">in</span> A) <span class="k">for</span> s <span class="k">in</span> S]
+    <span class="k">if</span> max(abs(V_new[s] - V[s]) <span class="k">for</span> s <span class="k">in</span> S) &lt; theta: <span class="k">break</span>
+    V = V_new
+pi = {s: argmax_a(...) <span class="k">for</span> s <span class="k">in</span> S}   <span class="c"># 마지막에 한 번만 정책 추출</span></pre>
+</section>
+
+<section class="card" id="vi-walk" data-toc="가치 이터레이션 따라가기">
+  <h2>Value Iteration on FrozenLake</h2>
+  <span class="slide-ref">p.41 – 49</span>
+  <ul>
+    <li><b>k=1</b>: \(v_1(14) = \max_a[\dots] = 10\) (→로 목표). 나머지 0.</li>
+    <li><b>k=2</b>: \(v_2(10) = 0 + 0.9\times 10 = 9\) (↓), \(v_2(13) = 9\) (→).</li>
+    <li><b>k=3</b>: \(v_3(6) = v_3(9) = 8.1\)</li>
+    <li><b>k=4</b>: \(v_4(2) = v_4(8) = 7.29\)</li>
+    <li><b>k=5</b>: \(v_5(1) = v_5(3) = v_5(4) = 6.56\)</li>
+    <li><b>k=6</b>: \(v_6(0) = 5.91\) → 이후 변화 없음 (\(k=\infty\)와 동일)</li>
+  </ul>
+  <p>최종 최적 정책: 0 → ↓ … 처럼 구멍을 피해 목표까지 가는 최단 경로 (6스텝).</p>
+  <div data-widget="frozenlake" data-mode="vi"></div>
+<div data-anim="vi"></div>
+</section>
+
+<h2 class="part-title"><small>part 5</small>asynchronous dp</h2>
+
+<section class="card" id="async" data-toc="비동기 DP">
+  <h2>Asynchronous Dynamic Programming <span class="ko">비동기 DP</span></h2>
+  <span class="slide-ref">p.51</span>
+  <ul>
+    <li>지금까지의 DP는 <b>동기식(synchronous)</b> 백업 — 모든 상태를 병렬로(한꺼번에) 백업.</li>
+    <li><b>비동기 DP</b>는 상태를 <b>개별적으로, 아무 순서로나</b> 백업.</li>
+    <li>선택된 각 상태에 적절한 백업을 적용.</li>
+    <li>계산량을 크게 줄일 수 있다.</li>
+    <li>모든 상태가 계속 선택되기만 하면 수렴이 보장된다.</li>
+  </ul>
+</section>
+
+<section class="card" id="inplace" data-toc="In-place DP">
+  <h2>In-Place Dynamic Programming</h2>
+  <span class="slide-ref">p.52</span>
+  <p>In-place 가치 이터레이션은 가치함수를 <b>한 벌만</b> 저장해요. 갱신된 값을 같은 sweep 안에서 바로 사용!</p>
+  <div class="cols">
+    <div class="box"><h4>Synchronous (두 벌: old, new)</h4>
+      <div class="eq">\[v_{new}(s) \leftarrow \max_a \sum_{s'} p\,[r + \gamma v_{old}(s')]\]</div>
+      <p style="font-size:15px">FrozenLake: k=6이 되어야 수렴</p></div>
+    <div class="box"><h4>In-place (한 벌)</h4>
+      <div class="eq">\[v(s) \leftarrow \max_a \sum_{s'} p\,[r + \gamma v(s')]\]</div>
+      <p style="font-size:15px">슬라이드처럼 <b>k=1 한 번의 sweep</b>만에 최적값 5.91 … 10이 채워질 수 있음! (위젯은 15→0 순서라 3번 칸만 다음 sweep에 채워져요)</p></div>
+  </div>
+  <p>위 FrozenLake 위젯에서 “가치 이터레이션 (In-place)”를 골라 직접 비교해 보세요.</p>
+</section>
+
+<section class="card" id="prioritized" data-toc="Prioritized Sweeping">
+  <h2>Prioritized Sweeping</h2>
+  <span class="slide-ref">p.53</span>
+  <p><b>벨만 오차(Bellman error)의 크기</b>로 어떤 상태를 먼저 갱신할지 정해요:</p>
+  <div class="eq">\[\Big|\max_{a \in \A} \sum_{s' \in \S} p(s'\mid s,a)\big[r(s,a,s') + \gamma v(s')\big] - v(s)\Big|\]</div>
+  <ul>
+    <li>오차가 큰 상태 = 아직 값이 많이 틀린 상태 → 우선 백업</li>
+    <li>우선순위 큐로 관리하고, 백업 후엔 영향을 받는 상태(선행 상태)들의 오차를 다시 계산</li>
+    <li>FrozenLake에서도 동기식(k=6) 대비 훨씬 적은 백업으로 같은 결과(k=1에 최적값)에 도달</li>
+  </ul>
+</section>
+
+<section class="card tint" id="quiz04" data-toc="셀프 체크 퀴즈">
+  <h2>Self-check <span class="ko">스스로 확인하기</span></h2>
+  <details class="quiz"><summary>DP의 세 가지 성질은?</summary>
+    <div class="ans">Substructure(부분문제로 분해), Table structure(해를 저장해 재사용), Bottom-up computation(작은 문제 → 큰 문제).</div></details>
+  <details class="quiz"><summary>반복적 정책 평가와 가치 이터레이션의 업데이트 식 차이는?</summary>
+    <div class="ans">정책 평가: \(\sum_a \pi(a\mid s)\sum_{s'}p[r+\gamma v_k(s')]\) (기대 백업). 가치 이터레이션: \(\max_a \sum_{s'}p[r+\gamma v_k(s')]\) (최적 백업).</div></details>
+  <details class="quiz"><summary>정책 이터레이션이 유한 번 안에 끝나는 이유는?</summary>
+    <div class="ans">결정적 정책의 수가 유한(\(|\A|^{|\S|}\))하고, 매 반복마다 정책이 엄격히 개선되거나(같은 정책 재방문 불가) 멈추기 때문.</div></details>
+  <details class="quiz"><summary>FrozenLake 무작위 정책 평가에서 \(v_1(14)\)는? 가치 이터레이션에서는?</summary>
+    <div class="ans">정책 평가: \(0.25 \times 10 = 2.5\). 가치 이터레이션: \(\max = 10\).</div></details>
+  <details class="quiz"><summary>FrozenLake 최적 가치 \(v_*(0) = 5.9\)는 어떻게 나온 값인가요?</summary>
+    <div class="ans">시작점에서 목표까지 6스텝, 마지막 스텝에서 보상 10 → \(10 \times 0.9^5 = 5.905\).</div></details>
+  <details class="quiz"><summary>비동기 DP가 수렴하기 위한 조건은?</summary>
+    <div class="ans">모든 상태가 (무한히) 계속 선택되어 백업되어야 한다.</div></details>
+  <details class="quiz"><summary>GPI란?</summary>
+    <div class="ans">어떤 평가 방법과 어떤 개선 방법이든, 평가와 개선을 번갈아(혹은 섞어) 반복하는 일반적인 틀. PI, VI, MC 제어, SARSA 모두 GPI의 사례.</div></details>
+</section>
+
+<nav class="ch-nav"></nav>
+    </main>
+  </div>
+</div>
+</body>
+</html>

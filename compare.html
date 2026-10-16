@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한눈에 비교 — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/notes.js"></script>
+<style>
+  table.t.cmp th:first-child, table.t.cmp td:first-child { background: var(--dew); font-family: var(--font-ui); font-size: 14px; white-space: nowrap; }
+  table.t.cmp td { vertical-align: top; }
+  .key { font-family: var(--font-hand); color: var(--sienna); font-size: 22px; line-height: 1.3; margin: 10px 0 0; }
+  .key::before { content: "구분 포인트 → "; color: var(--muted); font-size: 18px; }
+  .ch-link { font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+  .filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+  .filter button { font-family: var(--font-ui); font-size: 13px; border: 1.5px solid var(--mist); background: var(--cream); border-radius: 20px; padding: 4px 12px; cursor: pointer; }
+  .filter button.on { border-color: var(--charcoal); box-shadow: var(--shadow-btn); }
+</style>
+</head>
+<body data-ch="cmp">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">헷갈리는 것끼리 나란히</span>
+    <h1 class="display">compare<br>side by side</h1>
+    <p class="lede">시험에 잘 나오는 “A vs B” 를 전부 표로 모았어요. 표 아래 <span class="mk">구분 포인트</span> 한 줄만 기억해도 대부분 풀려요.</p>
+    <div class="filter" id="filter">
+      <button type="button" class="on" data-f="all">전체</button>
+      <button type="button" data-f="02">02 MDP</button>
+      <button type="button" data-f="03">03 Bellman</button>
+      <button type="button" data-f="04">04 DP</button>
+      <button type="button" data-f="05">05 MC</button>
+      <button type="button" data-f="06">06 TD</button>
+    </div>
+    <div class="meta">장별 요약은 → <a href="summary.html">한눈에 요약</a></div>
+    <div data-sticker="heart" data-rot="-8" style="right:8%;top:70px;width:76px;height:70px"></div>
+    <div data-sticker="ghost" data-rot="10" style="right:19%;top:200px;width:54px;height:62px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<!-- ===== 02 ===== -->
+<section class="card" id="c-mp" data-ch="02" data-toc="MP vs MRP vs MDP">
+  <h2>MP vs MRP vs MDP</h2>
+  <span class="ch-link"><a href="ch02-mdp.html#mp">02장 p.5–7</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Markov Process</th><th>Markov Reward Process</th><th>Markov Decision Process</th></tr></thead>
+    <tbody>
+      <tr><td>튜플</td><td>\(\langle\S,\P\rangle\)</td><td>\(\langle\S,\P,\Rc,\gamma\rangle\)</td><td>\(\langle\S,\A,\P,\Rc,\gamma\rangle\)</td></tr>
+      <tr><td>전이</td><td>\(\P_{ss'}\)</td><td>\(\P_{ss'}\)</td><td>\(\P^a_{ss'}\) (행동에 의존)</td></tr>
+      <tr><td>보상</td><td>없음</td><td>\(\Rc_s = \E[R_{t+1}\mid S_t=s]\)</td><td>\(\Rc^a_s = \E[R_{t+1}\mid S_t=s,A_t=a]\)</td></tr>
+      <tr><td>결정</td><td>없음</td><td>없음</td><td>에이전트가 행동 선택 (정책)</td></tr>
+      <tr><td>택시 예</td><td>위치만 확률적으로 바뀜</td><td>+ 이동마다 요금(보상)</td><td>+ Wait / Move 선택</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">하나씩 더해진다: 상태·전이 → +보상·할인 → +행동</p>
+</section>
+
+<section class="card" id="c-episodic" data-ch="02" data-toc="Episodic vs Continuing">
+  <h2>Episodic vs Continuous Task</h2>
+  <span class="ch-link"><a href="ch02-mdp.html#episodic">02장 p.19</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Episodic</th><th>Continuous</th></tr></thead>
+    <tbody>
+      <tr><td>끝</td><td>시작과 종료가 명확 (에피소드)</td><td>정해진 끝이 없음</td></tr>
+      <tr><td>γ</td><td>γ = 1 도 가능 (모든 수열이 종료되면)</td><td>γ ≠ 1 (리턴 발산 방지)</td></tr>
+      <tr><td>예</td><td>체스, 미로, 정해진 목적지 자율주행</td><td>주식 트레이딩, 공장 제어, 신호등, 로봇 청소기</td></tr>
+      <tr><td>MC 적용</td><td>가능</td><td><b>불가</b> (리턴을 끝까지 못 구함) → TD 사용</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">끝이 있나? 없으면 γ&lt;1, MC 못 씀</p>
+</section>
+
+<section class="card" id="c-det" data-ch="02" data-toc="결정적 vs 확률적">
+  <h2>Deterministic vs Stochastic</h2>
+  <span class="ch-link"><a href="ch02-mdp.html#transition">02장 p.15, p.23</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Deterministic (결정적)</th><th>Stochastic (확률적)</th></tr></thead>
+    <tbody>
+      <tr><td>상태 전이</td><td>\(s' = f(s,a)\)</td><td>\(p(s'\mid s,a) = P[S_{t+1}=s'\mid S_t=s,A_t=a]\)</td></tr>
+      <tr><td>정책</td><td>\(\pi(s) = a\) (μ 로도 씀)</td><td>\(\pi(a\mid s) = P[A_t=a\mid S_t=s]\)</td></tr>
+      <tr><td>가치 계산</td><td>경로가 하나 → 등비급수로 바로</td><td>경로가 트리처럼 갈라짐 → 기댓값(벨만 방정식) 필요</td></tr>
+      <tr><td>예</td><td>FrozenLake is_slippery=False, Move</td><td>택시 Wait, 장비 강화, ε-greedy</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">하나로 정해지면 결정적, 확률분포면 확률적</p>
+</section>
+
+<section class="card" id="c-vq" data-ch="02" data-toc="v vs q">
+  <h2>State-value v vs Action-value q</h2>
+  <span class="ch-link"><a href="ch02-mdp.html#value">02장 p.25</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>\(v_\pi(s)\)</th><th>\(q_\pi(s,a)\)</th></tr></thead>
+    <tbody>
+      <tr><td>정의</td><td>\(\E_\pi[G_t\mid S_t=s]\)</td><td>\(\E_\pi[G_t\mid S_t=s, A_t=a]\)</td></tr>
+      <tr><td>의미</td><td>상태 s 에서 π 를 따를 때의 기대 리턴</td><td>s 에서 <b>먼저 a</b> 를 하고 그 뒤 π 를 따를 때</td></tr>
+      <tr><td>관계</td><td>\(v_\pi(s) = \sum_a\pi(a\mid s)q_\pi(s,a)\)</td><td>\(q_\pi(s,a) = \sum_{s'}p(s'\mid s,a)[r + \gamma v_\pi(s')]\)</td></tr>
+      <tr><td>최적</td><td>\(v_*(s) = \max_a q_*(s,a)\)</td><td>\(q_*(s,a) = \sum_{s'}p[r + \gamma v_*(s')]\)</td></tr>
+      <tr><td>정책 뽑기</td><td>\(\argmax_a \sum_{s'}p[r+\gamma v(s')]\) → <b>모델 필요</b></td><td>\(\argmax_a q(s,a)\) → <b>모델 불필요</b></td></tr>
+      <tr><td>주로 쓰는 곳</td><td>DP, TD(0) 예측</td><td>MC 제어, SARSA, Q-learning</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">모델이 없으면 q 를 배워야 정책을 만들 수 있다</p>
+</section>
+
+<section class="card" id="c-agents" data-ch="02" data-toc="에이전트 종류">
+  <h2>Types of RL Agents</h2>
+  <span class="ch-link"><a href="ch02-mdp.html#types">02장 p.29–31</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>명시적으로 가진 것</th><th>예</th></tr></thead>
+    <tbody>
+      <tr><td>Model-based</td><td>모델 (정책/가치는 있을 수도 없을 수도)</td><td>DP (모델을 알고 계획)</td></tr>
+      <tr><td>Model-free</td><td>가치함수 및/또는 정책, 모델 없음</td><td>MC, SARSA, Q-learning</td></tr>
+      <tr><td>Value-based</td><td>가치함수 (정책은 암묵적: argmax)</td><td>Q-learning, MC 제어</td></tr>
+      <tr><td>Policy-based</td><td>정책 (가치함수 없음)</td><td>Policy Gradient (예정)</td></tr>
+      <tr><td>Actor-critic</td><td>정책 + 가치함수</td><td>(예정)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">축 2개: 모델 유무 / 가치·정책 중 무엇을 들고 있나</p>
+</section>
+
+<!-- ===== 03 ===== -->
+<section class="card" id="c-eq" data-ch="03" data-toc="기대 vs 최적 방정식">
+  <h2>Bellman Expectation vs Optimality</h2>
+  <span class="ch-link"><a href="ch03-bellman.html#summary">03장 p.16</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Expectation (기대)</th><th>Optimality (최적)</th></tr></thead>
+    <tbody>
+      <tr><td>대상</td><td>주어진 정책 π 의 \(v_\pi, q_\pi\)</td><td>최적 \(v_*, q_*\)</td></tr>
+      <tr><td>행동 처리</td><td>\(\sum_a \pi(a\mid s)\) — 정책으로 <b>평균</b></td><td>\(\max_a\) — <b>최댓값</b></td></tr>
+      <tr><td>v 식</td><td>\(\sum_a\sum_{s'}\pi p[r + \gamma v_\pi(s')]\)</td><td>\(\max_a\sum_{s'}p[r + \gamma v_*(s')]\)</td></tr>
+      <tr><td>q 식</td><td>\(\sum_{s'}p[r + \gamma\sum_{a'}\pi(a'\mid s')q_\pi(s',a')]\)</td><td>\(\sum_{s'}p[r + \gamma\max_{a'}q_*(s',a')]\)</td></tr>
+      <tr><td>선형?</td><td>선형 → \(v_\pi = (I-\gamma\P^\pi)^{-1}\Rc^\pi\) 가능</td><td>비선형(max) → 반복법 필요</td></tr>
+      <tr><td>DP (full backup)</td><td>Iterative Policy Evaluation</td><td>Value Iteration</td></tr>
+      <tr><td>샘플링 (TD)</td><td><b>SARSA</b></td><td><b>Q-learning</b></td></tr>
+      <tr><td>백업 다이어그램</td><td>가지들을 평균</td><td>가지에 호(arc) = max</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">평균(Σπ)이면 기대, max면 최적. 2×2 표(DP/샘플링)로 외우기</p>
+</section>
+
+<section class="card" id="c-math" data-ch="03" data-toc="수학 도구 정리">
+  <h2>Metric · Cauchy · Complete · Contraction</h2>
+  <span class="ch-link"><a href="ch03-bellman.html#metric">03장 p.19–24</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th>개념</th><th>뜻</th><th>RL 에서의 역할</th></tr></thead>
+    <tbody>
+      <tr><td>거리 공간</td><td>비음수·동일성·대칭·삼각부등식을 만족하는 거리 d</td><td>\((\R^{|\S|}, \|\cdot\|_\infty)\): 가치함수 사이 거리 = 최대 차이</td></tr>
+      <tr><td>코시 수열</td><td>뒤로 갈수록 항끼리 한없이 가까워짐</td><td>\(v_0, v_1, v_2, \dots\) 가 코시가 됨</td></tr>
+      <tr><td>완비 공간</td><td>모든 코시 수열이 공간 안에서 수렴 (ℚ ✗, ℝⁿ ✓)</td><td>극한 \(v_*\) 가 \(\R^{|\S|}\) 안에 존재</td></tr>
+      <tr><td>축약사상</td><td>\(d(Tx,Ty) \le \gamma d(x,y),\ 0\le\gamma\lt1\)</td><td>벨만 기대·최적 연산자 모두 γ-축약</td></tr>
+      <tr><td>바나흐 정리</td><td>완비 + 축약 ⇒ 유일한 고정점, 반복하면 수렴</td><td>\(v_\pi, v_*\) 존재·유일, PE·VI 수렴 보장</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">완비 공간 + 축약사상 = 유일한 답이 있고 반복하면 찾아간다</p>
+</section>
+
+<!-- ===== 04 ===== -->
+<section class="card" id="c-dp" data-ch="04" data-toc="PE vs PI vs VI">
+  <h2>Policy Evaluation vs Policy Iteration vs Value Iteration</h2>
+  <span class="ch-link"><a href="ch04-dp.html#vi">04장 p.39–40</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Policy Evaluation</th><th>Policy Iteration</th><th>Value Iteration</th></tr></thead>
+    <tbody>
+      <tr><td>문제</td><td>주어진 π 의 \(v_\pi\) 구하기 (예측)</td><td>π* 찾기 (제어)</td><td>π* 찾기 (제어)</td></tr>
+      <tr><td>사용 방정식</td><td>벨만 기대</td><td>기대(평가) + 그리디 개선</td><td>벨만 최적</td></tr>
+      <tr><td>업데이트</td><td>\(\sum_a\pi\sum_{s'}p[r+\gamma v_k]\)</td><td>평가 수렴 → \(\pi' = \text{greedy}(v_\pi)\)</td><td>\(\max_a\sum_{s'}p[r+\gamma v_k]\)</td></tr>
+      <tr><td>명시적 정책</td><td>고정된 π</td><td>있음 (매 반복 갱신)</td><td><b>없음</b> (마지막에 한 번 추출)</td></tr>
+      <tr><td>수렴 근거</td><td>기대 연산자 γ-축약</td><td>정책 개선 정리 + 정책 수 유한</td><td>최적 연산자 γ-축약</td></tr>
+      <tr><td>반복 비용</td><td>sweep 당 \(O(|\A||\S|^2)\)</td><td>반복 수 적지만 한 번이 비쌈 (평가 전체)</td><td>반복 하나가 싸지만 횟수 많을 수 있음</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">PE 는 평가만, PI 는 “평가 끝까지 + 개선”, VI 는 “max 하나로 둘 다”</p>
+</section>
+
+<section class="card" id="c-async" data-ch="04" data-toc="동기 vs 비동기 DP">
+  <h2>Synchronous vs In-place vs Prioritized Sweeping</h2>
+  <span class="ch-link"><a href="ch04-dp.html#async">04장 p.51–53</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Synchronous</th><th>In-place</th><th>Prioritized Sweeping</th></tr></thead>
+    <tbody>
+      <tr><td>값 테이블</td><td>2벌 (old, new)</td><td>1벌</td><td>1벌</td></tr>
+      <tr><td>갱신 순서</td><td>모든 상태 한꺼번에</td><td>하나씩, 바로 덮어씀</td><td>벨만 오차가 큰 상태부터</td></tr>
+      <tr><td>새 값 사용</td><td>다음 sweep 부터</td><td>같은 sweep 안에서 즉시</td><td>즉시</td></tr>
+      <tr><td>FrozenLake</td><td>k=6 에 수렴</td><td>순서 잘 잡으면 1~2 sweep</td><td>적은 백업으로 빠르게</td></tr>
+      <tr><td>수렴 조건</td><td>항상</td><td colspan="2">모든 상태가 계속 선택되기만 하면</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">비동기 = 아무 순서로 하나씩, 계산 절약</p>
+</section>
+
+<!-- ===== 05·06 ===== -->
+<section class="card tint" id="c-big" data-ch="05 06" data-toc="DP vs MC vs TD (총정리)">
+  <h2>DP vs MC vs TD <span class="ko">총정리</span></h2>
+  <span class="ch-link"><a href="ch05-mc.html#dp-vs-rl">05장 p.4–5</a> · <a href="ch06-td.html#dp-mc-td">06장 p.5</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>DP</th><th>MC</th><th>TD</th></tr></thead>
+    <tbody>
+      <tr><td>모델(p, r)</td><td>필요 (planning)</td><td>불필요 (learning)</td><td>불필요 (learning)</td></tr>
+      <tr><td>업데이트 식</td><td>\(\sum_{a,s'}\pi p[r + \gamma V(s')]\)</td><td>\(V + \alpha[G_t - V]\)</td><td>\(V + \alpha[R + \gamma V(S') - V]\)</td></tr>
+      <tr><td>부트스트래핑</td><td>O</td><td>X</td><td>O</td></tr>
+      <tr><td>샘플링</td><td>X (모든 경우, full-width)</td><td>O (한 경로 끝까지)</td><td>O (한 경로 1스텝)</td></tr>
+      <tr><td>언제 업데이트</td><td>sweep 마다</td><td>에피소드 끝</td><td>매 스텝</td></tr>
+      <tr><td>Continuous task</td><td>O</td><td>X</td><td>O</td></tr>
+      <tr><td>편향 / 분산</td><td>–</td><td>편향 0 / 분산 큼</td><td>약간 편향 / 분산 작음</td></tr>
+      <tr><td>초기값 민감도</td><td>–</td><td>둔감</td><td>민감</td></tr>
+      <tr><td>마르코프 성질</td><td>활용</td><td>활용 X (비마르코프에 강함)</td><td>활용 (마르코프에서 효율적)</td></tr>
+      <tr><td>백업 위치</td><td>얕고 넓음</td><td>깊고 좁음</td><td>얕고 좁음</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">DP=모델로 1스텝 전부, MC=샘플로 끝까지, TD=샘플로 1스텝 + 추정치</p>
+</section>
+
+<section class="card" id="c-mctd" data-ch="06" data-toc="MC vs TD 상세">
+  <h2>MC vs TD <span class="ko">상세</span></h2>
+  <span class="ch-link"><a href="ch06-td.html#bias-var">06장 p.8–13</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Monte Carlo</th><th>TD(0)</th></tr></thead>
+    <tbody>
+      <tr><td>타깃</td><td>\(G_t\) (실제 리턴)</td><td>\(R_{t+1} + \gamma V(S_{t+1})\)</td></tr>
+      <tr><td>편향</td><td>불편 (unbiased)</td><td>편향 (V 가 추정치라서)</td></tr>
+      <tr><td>분산</td><td>큼 (많은 무작위 행동·전이·보상)</td><td>작음 (하나에만 의존)</td></tr>
+      <tr><td>학습 시점</td><td>최종 결과 후</td><td>최종 결과 전, 없이도 가능</td></tr>
+      <tr><td>퇴근길 예</td><td>도착(43분) 후 모두 43 쪽으로</td><td>각 예측을 다음 예측 쪽으로 즉시</td></tr>
+      <tr><td>Batch 해</td><td>관측 리턴에 최소제곱 → V(A)=0</td><td>추정 MDP 의 최대우도 → V(A)=0.75</td></tr>
+      <tr><td>장점</td><td>수렴 성질 좋음, 단순, 초기값 둔감</td><td>보통 더 효율적, 온라인, continuous OK</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">MC = 편향 0·분산 큼·끝나야 앎 / TD = 편향 조금·분산 작음·바로 앎</p>
+</section>
+
+<section class="card" id="c-visit" data-ch="05" data-toc="First vs Every visit">
+  <h2>First-visit vs Every-visit MC</h2>
+  <span class="ch-link"><a href="ch05-mc.html#mc-ex2">05장 p.17</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>First-visit</th><th>Every-visit</th></tr></thead>
+    <tbody>
+      <tr><td>사용하는 G</td><td>에피소드에서 (s,a) 를 <b>처음</b> 방문한 시점의 리턴만</td><td>방문할 때마다의 리턴 전부</td></tr>
+      <tr><td>3×3 예 (7,R)</td><td>t=2 의 G = −2.71 만</td><td>t=2 의 −2.71 과 t=4 의 −1 둘 다 평균</td></tr>
+      <tr><td>강의 코드</td><td>reversed + dict 덮어쓰기 → first-visit</td><td>–</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">한 에피소드에 같은 칸 두 번 → 처음 것만이면 first-visit</p>
+</section>
+
+<section class="card" id="c-explore" data-ch="05" data-toc="greedy vs ε-greedy vs GLIE">
+  <h2>Greedy vs ε-greedy vs GLIE</h2>
+  <span class="ch-link"><a href="ch05-mc.html#egreedy">05장 p.21–28</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Greedy</th><th>ε-greedy (ε 고정)</th><th>GLIE (예: ε=1/k)</th></tr></thead>
+    <tbody>
+      <tr><td>그리디 행동 확률</td><td>1</td><td>\(1-\varepsilon+\varepsilon/m\)</td><td>점점 1 로</td></tr>
+      <tr><td>다른 행동 확률</td><td>0</td><td>\(\varepsilon/m\)</td><td>점점 0 으로 (하지만 무한히 시도)</td></tr>
+      <tr><td>탐험</td><td>없음 → 첫 경로에 갇힘</td><td>계속</td><td>무한히 하되 줄어듦</td></tr>
+      <tr><td>MC 제어 수렴</td><td>보장 X</td><td>ε-soft 최적 정책</td><td><b>진짜 최적</b> \(q_*\)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">ε 고정 → ε-soft 최적까지만, ε→0 (GLIE) → 진짜 최적</p>
+</section>
+
+<section class="card" id="c-avg" data-ch="05" data-toc="1/N vs α">
+  <h2>Sample Mean (1/N) vs Exponential Moving Average (α)</h2>
+  <span class="ch-link"><a href="ch05-mc.html#nonstationary">05장 p.40–43</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>표본평균 1/N</th><th>지수이동평균 α</th></tr></thead>
+    <tbody>
+      <tr><td>업데이트</td><td>\(Q + \frac{1}{N}(G - Q)\)</td><td>\(Q + \alpha(G - Q)\)</td></tr>
+      <tr><td>가중치</td><td>모든 리턴 동일 1/N</td><td>최근 \(\alpha\), 오래될수록 \(\alpha(1-\alpha)^k\)</td></tr>
+      <tr><td>적합한 상황</td><td>정상(stationary), i.i.d.</td><td>비정상 — 정책이 계속 변할 때</td></tr>
+      <tr><td>Robbins-Monro</td><td>만족 (\(\alpha_n = 1/n\))</td><td>상수 α 는 \(\sum\alpha^2 = \infty\) 라 불만족</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">정책이 바뀌면 옛날 리턴은 덜 믿자 → α</p>
+</section>
+
+<section class="card" id="c-sarsa-q" data-ch="06" data-toc="SARSA vs Q-learning">
+  <h2>SARSA vs Q-learning</h2>
+  <span class="ch-link"><a href="ch06-td.html#on-off">06장 p.27–39</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>SARSA</th><th>Q-learning</th></tr></thead>
+    <tbody>
+      <tr><td>타깃</td><td>\(R + \gamma Q(S',A')\)</td><td>\(R + \gamma\max_a Q(S',a)\)</td></tr>
+      <tr><td>근거 방정식</td><td>벨만 기대</td><td>벨만 최적</td></tr>
+      <tr><td>정책 종류</td><td><b>On-policy</b>: target = behavior (ε-greedy)</td><td><b>Off-policy</b>: target(greedy) ≠ behavior(ε-greedy)</td></tr>
+      <tr><td>A′ 의 역할</td><td>타깃에 쓰고 <b>그대로 실행</b></td><td>타깃은 max, 실행할 행동은 새로 ε-greedy</td></tr>
+      <tr><td>장점</td><td>학습 안정적</td><td>샘플 효율적, 빠른 수렴</td></tr>
+      <tr><td>단점</td><td>샘플 비효율, 느린 수렴</td><td>학습 불안정</td></tr>
+      <tr><td>Cliff walking</td><td>절벽에서 먼 <b>안전한</b> 길, 학습 중 보상 높음</td><td>절벽 옆 <b>최단</b> 길(최적), 탐험 중 자주 추락</td></tr>
+      <tr><td>예제 (같은 샘플)</td><td>Q(1,D) = −0.199</td><td>Q(1,D) = −0.19</td></tr>
+      <tr><td>수렴 조건</td><td colspan="2">GLIE + Robbins-Monro → \(q_*\)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">다음 행동을 실제로 한 것(SARSA) vs 가장 좋은 것(Q-learning)</p>
+</section>
+
+<section class="card" id="c-target" data-ch="06" data-toc="Target vs Behavior policy">
+  <h2>Target Policy vs Behavior Policy</h2>
+  <span class="ch-link"><a href="ch06-td.html#target-behavior">06장 p.30</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Target policy</th><th>Behavior policy</th></tr></thead>
+    <tbody>
+      <tr><td>역할</td><td>에이전트가 <b>배우려는</b> 정책 (이 정책의 가치를 학습)</td><td>실제로 행동하고 <b>샘플을 만드는</b> 정책</td></tr>
+      <tr><td>SARSA</td><td>ε-greedy</td><td>ε-greedy (같음 → on)</td></tr>
+      <tr><td>Q-learning</td><td>greedy</td><td>ε-greedy (다름 → off)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">두 정책이 같으면 on-policy, 다르면 off-policy</p>
+</section>
+
+<section class="card" id="c-nstep" data-ch="06" data-toc="TD(0) vs n-step vs TD(λ) vs MC">
+  <h2>TD(0) vs n-step vs TD(λ) vs MC</h2>
+  <span class="ch-link"><a href="ch06-td.html#nstep">06장 p.41–44</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>TD(0)</th><th>n-step TD</th><th>TD(λ)</th><th>MC</th></tr></thead>
+    <tbody>
+      <tr><td>타깃</td><td>\(G_t^{(1)}\)</td><td>\(G_t^{(n)}\)</td><td>\(G_t^\lambda = (1-\lambda)\sum\lambda^{n-1}G_t^{(n)}\)</td><td>\(G_t^{(\infty)} = G_t\)</td></tr>
+      <tr><td>보는 범위</td><td>1스텝</td><td>n스텝</td><td>모든 n 을 가중평균</td><td>끝까지</td></tr>
+      <tr><td>관계</td><td>= TD(λ=0)</td><td>중간</td><td>λ 로 조절</td><td>= TD(λ=1)</td></tr>
+      <tr><td>편향/분산</td><td>편향↑ 분산↓</td><td colspan="2">중간 (n, λ 로 조절)</td><td>편향↓ 분산↑</td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">n 이나 λ 를 키울수록 MC 쪽, 줄일수록 TD 쪽</p>
+</section>
+
+<section class="card" id="c-fwdbwd" data-ch="06" data-toc="Forward vs Backward TD(λ)">
+  <h2>Forward view vs Backward view TD(λ)</h2>
+  <span class="ch-link"><a href="ch06-td.html#fwd-bwd">06장 p.44–48</a></span>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>Forward view</th><th>Backward view</th></tr></thead>
+    <tbody>
+      <tr><td>방향</td><td>미래를 내다봄 (λ-return)</td><td>과거를 돌아봄 (eligibility trace)</td></tr>
+      <tr><td>업데이트</td><td>\(V(S_t) + \alpha(G_t^\lambda - V(S_t))\)</td><td>매 스텝 모든 s: \(V(s) + \alpha\delta_t E_t(s)\)</td></tr>
+      <tr><td>언제</td><td>에피소드 끝까지 기다려야 함 (MC처럼)</td><td>온라인, 매 스텝</td></tr>
+      <tr><td>핵심 등식</td><td colspan="2">\(G_t^\lambda - V(S_t) = \sum_{k\ge t}(\gamma\lambda)^{k-t}\delta_k\) → 에피소드 끝에서 두 방법의 총 업데이트가 같음</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Eligibility trace 종류</h3>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>방문한 (S,A) 의 trace</th></tr></thead>
+    <tbody>
+      <tr><td>Accumulating</td><td>\(E \leftarrow E + 1\) (여러 번 방문하면 누적)</td></tr>
+      <tr><td>Dutch</td><td>\(E \leftarrow (1-\alpha)E + 1\)</td></tr>
+      <tr><td>Replacing</td><td>\(E \leftarrow 1\) (방문하면 1로 리셋)</td></tr>
+    </tbody>
+  </table></div>
+  <h3>SARSA(λ) vs Watkins’s Q(λ)</h3>
+  <div class="tbl-wrap"><table class="t cmp">
+    <thead><tr><th></th><th>SARSA(λ)</th><th>Watkins’s Q(λ)</th></tr></thead>
+    <tbody>
+      <tr><td>δ</td><td>\(R + \gamma Q(S',A') - Q(S,A)\)</td><td>\(R + \gamma Q(S',A^*) - Q(S,A)\), \(A^* = \argmax_a Q(S',a)\)</td></tr>
+      <tr><td>trace 감쇠</td><td>항상 \(E \leftarrow \gamma\lambda E\)</td><td>A′ = A* 이면 \(\gamma\lambda E\), 탐험(A′≠A*)이면 <b>0 으로 리셋</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="key">미래를 모아 오기(forward) = 과거에 나눠 주기(backward)</p>
+</section>
+
+    </main>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const bar = document.getElementById('filter');
+    bar.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      bar.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      const f = b.dataset.f;
+      document.querySelectorAll('section.card[data-ch]').forEach(s => {
+        const show = f === 'all' || s.dataset.ch.split(' ').includes(f);
+        s.hidden = !show;
+        const link = document.querySelector(`.toc a[data-id="${s.id}"]`);
+        if (link) link.parentElement.hidden = !show;
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한눈에 요약 — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<script defer src="assets/notes.js"></script>
+<style>
+  .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+  .sum-grid > div { min-width: 0; }
+  .oneliner { font-family: var(--font-hand); color: var(--sienna); font-size: 25px; line-height: 1.3; margin: 4px 0 10px; }
+  .must { background: #fff; border: 1px solid var(--charcoal); border-radius: 8px; padding: 10px 14px; }
+  .must h4, .trap h4 { margin: 0 0 4px; font-family: var(--font-display); font-size: 17px; }
+  .trap { background: #fff3ea; border: 1px dashed var(--sienna); border-radius: 8px; padding: 10px 14px; }
+  .trap li::marker { content: "⚠ "; }
+  .go { font-family: var(--font-ui); font-size: 14px; }
+  @media (max-width: 760px) { .sum-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-ch="sum">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">시험 전 30분 · 5개 장을 한 페이지로</span>
+    <h1 class="display">everything<br>at a glance</h1>
+    <p class="lede">장마다 <span class="mk">한 줄 요약</span> → 핵심 개념 → 꼭 외울 식 → 자주 헷갈리는 점 순서로 정리했어요. 더 자세한 건 각 장 링크로!</p>
+    <div class="meta">비교표만 따로 보려면 → <a href="compare.html">한눈에 비교</a></div>
+    <div data-sticker="star" data-rot="8" style="right:8%;top:70px;width:64px;height:64px"></div>
+    <div data-sticker="bolt" data-rot="-10" style="right:18%;top:200px;width:50px;height:66px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson">
+
+<section class="card" id="flow" data-toc="전체 흐름 지도">
+  <h2>The Big Map <span class="ko">전체 흐름 지도</span></h2>
+  <p>모든 장은 결국 하나의 질문 — <b>“누적 보상을 최대화하는 정책 π* 을 어떻게 찾을까?”</b> — 에 대한 답이에요.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 760 430" font-family="Geist, Gowun Dodum, sans-serif" font-size="14">
+      <defs><marker id="sm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2b1a07"/></marker></defs>
+      <g fill="none" stroke="#2b1a07" stroke-width="1.5" marker-end="url(#sm)">
+        <path d="M380 62 L380 92"/>
+        <path d="M380 142 L380 172"/>
+        <path d="M330 212 L190 262"/>
+        <path d="M430 212 L570 262"/>
+        <path d="M570 312 L480 352"/>
+        <path d="M570 312 L660 352"/>
+        <path d="M120 312 L120 352"/>
+      </g>
+      <g stroke="#171717" stroke-width="1.5">
+        <rect x="250" y="16" width="260" height="46" rx="20" fill="#fdfbf9"/>
+        <rect x="250" y="96" width="260" height="46" rx="20" fill="#fdfbf9"/>
+        <rect x="250" y="172" width="260" height="40" rx="10" fill="#f7efe9"/>
+        <rect x="30" y="262" width="250" height="50" rx="12" fill="#fdfbf9"/>
+        <rect x="460" y="262" width="250" height="50" rx="12" fill="#fff0e6"/>
+        <rect x="30" y="356" width="200" height="56" rx="12" fill="#fdfbf9"/>
+        <rect x="390" y="356" width="170" height="56" rx="12" fill="#fff0e6"/>
+        <rect x="580" y="356" width="170" height="56" rx="12" fill="#fff0e6"/>
+      </g>
+      <g text-anchor="middle" fill="#2b1a07">
+        <text x="380" y="36" font-weight="600">02 MDP ⟨S, A, P, R, γ⟩</text><text x="380" y="54" font-size="12">문제를 수학으로 정의</text>
+        <text x="380" y="116" font-weight="600">03 Bellman 방정식</text><text x="380" y="134" font-size="12">v = r + γ·v′ 재귀식 (기대 / 최적)</text>
+        <text x="380" y="197" font-size="13">모델(p, r)을 아는가?</text>
+        <text x="155" y="284" font-weight="600">04 DP — 알 때 (planning)</text><text x="155" y="302" font-size="12">벨만 방정식을 정확히 반복 계산</text>
+        <text x="585" y="284" font-weight="600">05·06 RL — 모를 때 (learning)</text><text x="585" y="302" font-size="12">경험(샘플)으로 근사</text>
+        <text x="130" y="378" font-size="13">정책 평가 · PI · VI</text><text x="130" y="398" font-size="12">비동기 DP, GPI</text>
+        <text x="475" y="378" font-size="13">05 Monte Carlo</text><text x="475" y="398" font-size="12">에피소드 끝까지 → 평균</text>
+        <text x="665" y="378" font-size="13">06 TD</text><text x="665" y="398" font-size="12">한 스텝 + 부트스트랩</text>
+      </g>
+      <g font-family="Gaegu" font-size="18" fill="#ce500a">
+        <text x="210" y="240">Yes</text><text x="520" y="240">No</text>
+      </g>
+    </svg>
+  </figure>
+  <div class="roadmap" style="font-size:14px">
+    <span class="node">MDP</span><span class="arr">→</span><span class="node">Bellman</span><span class="arr">→</span><span class="node">DP</span><span class="arr">→</span><span class="node hot">MC</span><span class="arr">→</span><span class="node hot">TD: SARSA · Q-learning</span><span class="arr">→</span><span class="node hot">n-step · TD(λ)</span>
+  </div>
+  <div class="note"><span class="hand">관통하는 공식 하나</span>새 추정 ← 옛 추정 + 스텝크기 × (<b>타깃</b> − 옛 추정). DP·MC·TD·SARSA·Q-learning은 결국 <b>타깃을 무엇으로 쓰느냐</b>의 차이예요.</div>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>방법</th><th>타깃 (target)</th></tr></thead>
+    <tbody>
+      <tr><td>DP 정책 평가</td><td>\(\sum_a \pi(a\mid s)\sum_{s'}p(s'\mid s,a)[r + \gamma V(s')]\) (모든 경우의 기댓값)</td></tr>
+      <tr><td>가치 이터레이션</td><td>\(\max_a \sum_{s'}p(s'\mid s,a)[r + \gamma V(s')]\)</td></tr>
+      <tr><td>MC</td><td>\(G_t\) (실제 리턴)</td></tr>
+      <tr><td>TD(0)</td><td>\(R_{t+1} + \gamma V(S_{t+1})\)</td></tr>
+      <tr><td>SARSA</td><td>\(R_{t+1} + \gamma Q(S_{t+1}, A_{t+1})\)</td></tr>
+      <tr><td>Q-learning</td><td>\(R_{t+1} + \gamma \max_a Q(S_{t+1}, a)\)</td></tr>
+      <tr><td>n-step TD</td><td>\(G_t^{(n)} = R_{t+1} + \cdots + \gamma^{n-1}R_{t+n} + \gamma^n V(S_{t+n})\)</td></tr>
+      <tr><td>TD(λ)</td><td>\(G_t^\lambda = (1-\lambda)\sum_n \lambda^{n-1} G_t^{(n)}\)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card" id="s02" data-toc="02 MDP 요약">
+  <h2>02 · Finite MDP</h2>
+  <p class="oneliner">“강화학습 문제 = MDP 라는 틀에 담는다”</p>
+  <ul>
+    <li><b>마르코프 성질</b>: 미래는 현재 상태만으로 결정 (과거 불필요)</li>
+    <li>MP \(\langle\S,\P\rangle\) → MRP \(+\Rc,\gamma\) → MDP \(+\A\) (전이·보상이 행동에 의존)</li>
+    <li><b>리턴</b> \(G_t\) = 할인된 미래 보상의 합. γ 작으면 근시안, 크면 원시안</li>
+    <li><b>정책</b> π(a|s), <b>가치함수</b> v_π(s), q_π(s,a), <b>모델</b> (P, R) = 에이전트의 3요소</li>
+    <li><b>최적 정책 정리</b>: 모든 상태에서 최고인 π* 가 항상 존재하고 v*, q* 를 달성</li>
+  </ul>
+  <div class="sum-grid">
+    <div class="must"><h4>꼭 외울 식</h4>
+      <div class="eq">\[G_t = \sum_{k=0}^{\infty}\gamma^k R_{t+k+1} = R_{t+1} + \gamma G_{t+1}\]</div>
+      <div class="eq">\[v_\pi(s) = \E_\pi[G_t\mid S_t=s],\quad v_\pi(s) = \sum_a \pi(a\mid s)\,q_\pi(s,a)\]</div>
+      <div class="eq">\[v_*(s) = \max_\pi v_\pi(s),\quad q_*(s,a) = \max_\pi q_\pi(s,a)\]</div></div>
+    <div class="trap"><h4>자주 헷갈림</h4>
+      <ul>
+        <li>Continuous task 는 \(\gamma \ne 1\) (리턴 발산 방지)</li>
+        <li>정책 순서는 <b>부분</b> 순서 — 모든 정책 쌍이 비교 가능한 건 아님</li>
+        <li>사과 예제 Policy 2 (L,R) 의 v(0) = −10: 상태 1에 절대 못 감</li>
+        <li>\(r(s,a) = \sum_{s'} p(s'\mid s,a)\,r\) — 기대 보상 (택시: r(Airport,Wait)=4.3)</li>
+      </ul></div>
+  </div>
+  <p class="go"><a href="ch02-mdp.html">→ 02장 자세히 보기</a></p>
+</section>
+
+<section class="card" id="s03" data-toc="03 Bellman 요약">
+  <h2>03 · Bellman Equation</h2>
+  <p class="oneliner">“지금 가치 = 바로 받는 보상 + γ × 다음 가치”</p>
+  <ul>
+    <li><b>기대 방정식</b>: 정책 π 의 가치를 재귀적으로 표현 (π로 평균)</li>
+    <li><b>최적 방정식</b>: 평균 대신 <b>max</b> → 비선형이라 역행렬로 못 풂</li>
+    <li>유도 4단계 근거: 전기댓값 법칙 → 연쇄법칙 → <b>마르코프 성질</b> → 가치함수 정의</li>
+    <li>행렬형 \(v_\pi = (I-\gamma\P^\pi)^{-1}\Rc^\pi\) — \(O(n^3)\) 이라 큰 문제엔 비현실적</li>
+    <li>벨만 최적 연산자 T 는 \(\|\cdot\|_\infty\) 에서 <b>γ-축약사상</b> → 바나흐 고정점 정리 → v* 가 <b>존재·유일</b>, 반복하면 수렴</li>
+  </ul>
+  <div class="sum-grid">
+    <div class="must"><h4>꼭 외울 식</h4>
+      <div class="eq">\[v_\pi(s) = \sum_a\sum_{s'}\pi(a\mid s)p(s'\mid s,a)[r + \gamma v_\pi(s')]\]</div>
+      <div class="eq">\[q_\pi(s,a) = \sum_{s'}p(s'\mid s,a)\Big[r + \gamma\sum_{a'}\pi(a'\mid s')q_\pi(s',a')\Big]\]</div>
+      <div class="eq">\[v_*(s) = \max_a\sum_{s'}p(s'\mid s,a)[r + \gamma v_*(s')]\]</div>
+      <div class="eq">\[q_*(s,a) = \sum_{s'}p(s'\mid s,a)[r + \gamma \max_{a'}q_*(s',a')]\]</div></div>
+    <div class="trap"><h4>자주 헷갈림</h4>
+      <ul>
+        <li>q 의 기대 방정식은 <b>첫 행동이 이미 정해져</b> 있어 π 는 다음 상태에서만 등장</li>
+        <li>\(v_*(s) = \max_a q_*(s,a)\) 는 “더 좋은 행동이 있으면 바꿔서 개선 가능”하다는 정리에서 나옴</li>
+        <li>축약 증명에서 보상 R 은 빼면 <b>상쇄</b>, max 차이는 보조정리 \(|\max f_1 - \max f_2| \le \max|f_1-f_2|\)</li>
+        <li>바나흐 정리 조건: <b>완비</b> 거리공간 + <b>축약</b>사상 (ℚ 는 완비 아님)</li>
+      </ul></div>
+  </div>
+  <p class="go"><a href="ch03-bellman.html">→ 03장 자세히 보기</a></p>
+</section>
+
+<section class="card" id="s04" data-toc="04 DP 요약">
+  <h2>04 · Dynamic Programming</h2>
+  <p class="oneliner">“모델을 알면 벨만 방정식을 반복 적용해서 정확히 푼다”</p>
+  <ul>
+    <li>DP 3성질: <b>부분구조 · 테이블 · 상향식</b> (\(v_0=0 \to v_1 \to v_2 \cdots\))</li>
+    <li><b>정책 평가</b>: 벨만 기대 백업 반복 → \(v_\pi\) (기대 연산자도 γ-축약)</li>
+    <li><b>정책 이터레이션</b>: 평가(끝까지) ↔ 그리디 개선. 정책 수가 유한 → 유한 번에 π*</li>
+    <li><b>정책 개선 정리</b>: \(q_\pi(s,\pi'(s)) \ge v_\pi(s)\ \forall s \Rightarrow v_{\pi'} \ge v_\pi\)</li>
+    <li><b>가치 이터레이션</b>: 개선+평가를 max 하나로. 명시적 정책 없음</li>
+    <li><b>GPI</b>: 어떤 평가 + 어떤 개선이든 번갈아 하면 OK (MC 제어·SARSA 도 GPI)</li>
+    <li><b>비동기 DP</b>: In-place(표 1개), Prioritized sweeping(벨만 오차 큰 상태 먼저)</li>
+  </ul>
+  <div class="sum-grid">
+    <div class="must"><h4>꼭 외울 식</h4>
+      <div class="eq">\[\text{PE: } v_{k+1}(s) = \sum_a\pi(a\mid s)\sum_{s'}p\,[r + \gamma v_k(s')]\]</div>
+      <div class="eq">\[\text{개선: } \pi'(s) = \argmax_a \sum_{s'}p\,[r + \gamma v_\pi(s')]\]</div>
+      <div class="eq">\[\text{VI: } v_{k+1}(s) = \max_a\sum_{s'}p\,[r + \gamma v_k(s')]\]</div>
+      <p style="font-size:14px;margin:4px 0 0">FrozenLake: 무작위 정책 v(0)≈0.04, 최적 v*(0)=10×0.9⁵≈5.9</p></div>
+    <div class="trap"><h4>자주 헷갈림</h4>
+      <ul>
+        <li>PE 는 <b>주어진</b> 정책 평가, VI 는 <b>최적</b> 가치 찾기</li>
+        <li>PI 는 평가를 <b>수렴까지</b>, VI 는 사실상 평가 1번 + 개선을 합친 것</li>
+        <li>가치가 완전히 수렴하기 전에도 그리디 정책은 이미 최적일 수 있음 (k=5 vs ∞)</li>
+        <li>비동기 DP 수렴 조건: 모든 상태가 <b>계속</b> 선택될 것</li>
+      </ul></div>
+  </div>
+  <p class="go"><a href="ch04-dp.html">→ 04장 자세히 보기</a></p>
+</section>
+
+<section class="card" id="s05" data-toc="05 MC 요약">
+  <h2>05 · Monte Carlo</h2>
+  <p class="oneliner">“끝까지 해 보고, 받은 리턴을 평균 낸다”</p>
+  <ul>
+    <li><b>Model-free</b>, 완전한 에피소드에서 학습, <b>부트스트래핑 X</b>, 가치 = 평균 리턴 (큰 수의 법칙)</li>
+    <li>모델이 없으니 V 대신 <b>Q</b> 를 학습해야 \(\argmax_a Q\) 로 정책 개선 가능</li>
+    <li>리턴은 에피소드 <b>뒤에서부터</b>: \(g \leftarrow r + \gamma g\). First-visit: 처음 방문 시 G 만 사용</li>
+    <li>순수 그리디는 첫 경로에 갇힘 → <b>ε-greedy</b> 탐험 (ε-greedy 개선도 정책 개선 정리 만족)</li>
+    <li>ε 고정 → <b>ε-soft 최적</b>으로 수렴. <b>GLIE</b> (예: ε=1/k) 면 q* 로 수렴</li>
+    <li>정책이 변해 리턴이 i.i.d. 아님(비정상) → 1/N 대신 <b>α (지수이동평균)</b></li>
+  </ul>
+  <div class="sum-grid">
+    <div class="must"><h4>꼭 외울 식</h4>
+      <div class="eq">\[Q(S_t,A_t) \leftarrow Q + \tfrac{1}{N(S_t,A_t)}\big(G_t - Q\big)\ \text{ or }\ Q + \alpha(G_t - Q)\]</div>
+      <div class="eq">\[\pi(a\mid s) = \begin{cases}\varepsilon/m + 1-\varepsilon & a = \argmax Q \\ \varepsilon/m & \text{otherwise}\end{cases}\]</div>
+      <div class="eq">\[\text{GLIE: } N_k(s,a)\to\infty,\quad \pi_k \to \text{greedy}\]</div></div>
+    <div class="trap"><h4>자주 헷갈림</h4>
+      <ul>
+        <li>ε-greedy 에서 그리디 행동 확률은 \(1-\varepsilon\) 이 아니라 \(1-\varepsilon+\varepsilon/m\)</li>
+        <li>MC Policy Iteration(수렴 후 개선) vs MC Control(매 에피소드 개선)</li>
+        <li>구현 코드: reversed + dict 덮어쓰기 = first-visit</li>
+        <li>MC 는 continuous task 에 못 씀 (에피소드가 안 끝나서)</li>
+      </ul></div>
+  </div>
+  <p class="go"><a href="ch05-mc.html">→ 05장 자세히 보기</a></p>
+</section>
+
+<section class="card" id="s06" data-toc="06 TD 요약">
+  <h2>06 · Temporal Difference</h2>
+  <p class="oneliner">“한 스텝만 가 보고, 다음 상태의 추정치로 바로 고친다”</p>
+  <ul>
+    <li>TD = MC 의 샘플링 + DP 의 부트스트래핑. 매 스텝 온라인, continuous task OK</li>
+    <li>TD 타깃은 <b>편향 있지만 분산 작음</b>, MC 리턴은 <b>편향 0, 분산 큼</b></li>
+    <li>Batch: MC 는 관측 리턴에 맞춤, TD 는 추정 MDP 에 맞춤 (AB 예제: V(A) 0 vs 0.75) → TD 는 마르코프 성질 활용</li>
+    <li><b>SARSA</b>(기대 방정식 샘플, on-policy) vs <b>Q-learning</b>(최적 방정식 샘플, off-policy)</li>
+    <li>수렴 조건: GLIE + Robbins-Monro (\(\sum\alpha = \infty, \sum\alpha^2 \lt \infty\))</li>
+    <li>Cliff: Q-learning = 절벽 옆 최단(위험), SARSA = 멀리 안전한 길</li>
+    <li>n-step, λ-return(TD(0)=TD, TD(1)=MC), backward view = <b>eligibility trace</b></li>
+  </ul>
+  <div class="sum-grid">
+    <div class="must"><h4>꼭 외울 식</h4>
+      <div class="eq">\[\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t),\quad V(S_t) \leftarrow V(S_t) + \alpha\delta_t\]</div>
+      <div class="eq">\[\text{SARSA: } Q(S,A) \mathrel{+}= \alpha[R + \gamma Q(S',A') - Q(S,A)]\]</div>
+      <div class="eq">\[\text{Q-learning: } Q(S,A) \mathrel{+}= \alpha[R + \gamma\max_a Q(S',a) - Q(S,A)]\]</div>
+      <div class="eq">\[E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t=s),\quad V(s) \mathrel{+}= \alpha\delta_t E_t(s)\]</div></div>
+    <div class="trap"><h4>자주 헷갈림</h4>
+      <ul>
+        <li>Q-learning 도 <b>행동</b>은 ε-greedy 로 함 — 타깃만 max (target ≠ behavior)</li>
+        <li>Cliff 에서 학습 중 평균 보상은 오히려 SARSA 가 높음</li>
+        <li>On-policy: 안정적·샘플 비효율 / Off-policy: 불안정·샘플 효율</li>
+        <li>λ-return 가중치 \((1-\lambda)\lambda^{n-1}\), 남는 꼬리는 실제 리턴에</li>
+        <li>Watkins Q(λ): 탐험 행동(A′≠A*) 하면 trace 를 0 으로 끊음</li>
+      </ul></div>
+  </div>
+  <p class="go"><a href="ch06-td.html">→ 06장 자세히 보기</a></p>
+</section>
+
+<section class="card tint" id="numbers" data-toc="예제 숫자 모음">
+  <h2>Numbers to Remember <span class="ko">예제 답 모음</span></h2>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>예제</th><th>값</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td>택시 r(Airport, Wait)</td><td>0.2×20 + 0.1×10 + 0.7×(−1) = 4.3</td><td>02</td></tr>
+      <tr><td>강화 r(15, Enh.)</td><td>0.68×0 + 0.3×1 + 0.02×(−15) = 0</td><td>02</td></tr>
+      <tr><td>사과 Policy 1/2/3/4 의 v(0)</td><td>−10 / −10 / 5.26 / −8</td><td>02</td></tr>
+      <tr><td>사과 무작위 정책 v</td><td>(−2.25, −2.75), q(0,L)=−3.025, q(0,R)=−1.475, q(1,L)=−2.025, q(1,R)=−3.475</td><td>03</td></tr>
+      <tr><td>사과 최적 v*, q*</td><td>(5.26, 4.74), q*(0,L)=3.737, q*(0,R)=5.263, q*(1,L)=4.737, q*(1,R)=3.263</td><td>03</td></tr>
+      <tr><td>FrozenLake 무작위 정책 v_π (수렴)</td><td>0.04 0.04 0.1 0.04 / 0.07 − 0.26 − / 0.19 0.58 1.07 − / − 1.3 3.91 +</td><td>04</td></tr>
+      <tr><td>FrozenLake v* (VI, k=6)</td><td>5.9 6.56 7.29 6.56 / 6.56 − 8.1 − / 7.29 8.1 9 − / − 9 10 +</td><td>04</td></tr>
+      <tr><td>MC 두 시행 평균</td><td>G=2.62, 1.54 → V=2.08</td><td>05</td></tr>
+      <tr><td>3×3 첫 에피소드 Q (first-visit)</td><td>Q(1,D)=−4.1, Q(4,D)=−3.44, Q(7,R)=−2.71, Q(8,L)=−1.9, Q(8,R)=0</td><td>05</td></tr>
+      <tr><td>SARSA 1~5번째 샘플 (α=0.1)</td><td>Q(1,D)=Q(4,D)=Q(7,R)=−0.1, Q(8,R)=0, Q(1,R)=−0.1</td><td>06</td></tr>
+      <tr><td>같은 샘플 SARSA vs Q-learning</td><td>Q(1,D): −0.199 vs −0.19</td><td>06</td></tr>
+      <tr><td>AB 예제</td><td>V(B)=0.75 (둘 다), V(A): MC 0 / TD 0.75</td><td>06</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
