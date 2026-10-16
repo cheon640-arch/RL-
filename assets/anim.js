@@ -462,9 +462,12 @@
   /* =============== 04. 가치 이터레이션: 가치가 목표에서 번져 나감 =============== */
   AN.vi = root => {
     let el, V, k;
-    setup(root, '가치 이터레이션: max 백업으로 가치가 목표에서부터 번져요', {
+    // In-place 갱신 순서: 목표에 가까운 칸부터 (슬라이드 p.52 처럼 한 sweep 에 끝까지 전파)
+    const ORDER = [14, 13, 10, 9, 6, 8, 2, 4, 1, 3, 0];
+    const m0 = root.dataset.mode === 'inplace' ? 'inplace' : 'sync';
+    setup(root, m0 === 'inplace' ? 'In-place: 한 칸 계산하면 바로 그 값을 다음 칸에 써요' : '가치 이터레이션: max 백업으로 가치가 목표에서부터 번져요', {
       delay: 900, endPause: 3000,
-      extra: `<label>방식 <select class="a-opt" data-k="mode"><option value="sync">동기식 (sweep 단위)</option><option value="inplace">In-place (칸 하나씩, 15→0)</option></select></label>`,
+      extra: `<label>방식 <select class="a-opt" data-k="mode"><option value="sync"${m0 === 'sync' ? ' selected' : ''}>동기식 (sweep 단위)</option><option value="inplace"${m0 === 'inplace' ? ' selected' : ''}>In-place (칸 하나씩, 목표 가까운 칸부터)</option></select></label>`,
       reset(ctl) {
         const svg = ctl.svg(640, 300);
         el = { cells: flGrid(svg, 20, 20, 66) };
@@ -473,9 +476,11 @@
         el.fx = mk(svg, 'text', { x: 310, y: 140, fill: C.ink, 'font-size': 13, 'font-family': 'JetBrains Mono' }, '');
         el.fx2 = mk(svg, 'text', { x: 310, y: 162, fill: C.ink, 'font-size': 13, 'font-family': 'JetBrains Mono' }, '');
         mk(svg, 'text', { x: 310, y: 262, fill: C.ink, 'font-size': 13 }, '➜ = 지금 가치에 대한 그리디 행동');
-        V = Array(16).fill(0); k = 0; el.cur = 15;
+        V = Array(16).fill(0); k = 0; el.cur = 0; el.sweepChanged = false;
         draw([]);
-        ctl.cap('V₀ = 0 에서 시작. 매번 v(s) ← max_a [ r + γ·v(s′) ] 로 갱신해요. 명시적인 정책 없이 가치만!');
+        ctl.cap(ctl.opt('mode') === 'inplace'
+          ? 'V = 0 에서 시작. 표는 <b>한 벌</b>뿐이에요. 목표에 가까운 칸부터 하나씩 계산하고 <b>바로 덮어써요.</b>'
+          : 'V₀ = 0 에서 시작. 매번 V(s) ← max_a [ r + γ·V(s′) ] 로 갱신해요. 명시적인 정책 없이 가치만!');
       },
       async step(ctl) {
         const inplace = ctl.opt('mode') === 'inplace';
@@ -494,30 +499,33 @@
             : `✔ 더 이상 안 바뀜 → v* 도달 (k = ${k}). 화살표 = 최적 정책. 시작점 가치 5.9 = 10 × 0.9⁵`);
           return changed.length > 0;
         }
-        // in-place: 한 칸씩
-        let s = el.cur;
-        while (s >= 0 && FL.term(s)) s--;
-        if (s < 0) {
+        // in-place: 한 칸씩, ORDER 순서로
+        if (el.cur >= ORDER.length) {
           k++;
-          const any = el.sweepChanged; el.sweepChanged = false; el.cur = 15;
+          const any = el.sweepChanged; el.sweepChanged = false; el.cur = 0;
           el.k.textContent = `sweep ${k} 끝`;
-          if (!any) { ctl.cap(`✔ sweep ${k} 동안 아무것도 안 바뀜 → 수렴! 동기식(k=6)보다 훨씬 적은 sweep 으로 끝나요.`); return false; }
-          ctl.cap(`sweep ${k} 끝! In-place 는 방금 갱신한 값을 <b>같은 sweep 안에서 바로</b> 써서, 한 번에 여러 칸까지 가치가 전파돼요.`);
+          if (!any) { ctl.cap(`✔ sweep ${k} 은 아무것도 안 바꿨어요 = 이미 최적. 실제로 값을 채운 건 <b>첫 sweep 한 번</b>뿐! (동기식은 6 sweep)`); return false; }
+          ctl.cap(`sweep ${k} 끝! 벌써 <b>모든 칸이 최적값</b> (5.90 … 10) — 슬라이드 p.52 오른쪽 표 그대로. 확인용으로 한 번 더 돌려 볼게요.`);
           return true;
         }
+        const s = ORDER[el.cur];
         const old = V[s];
-        V[s] = Math.max(...[0, 1, 2, 3].map(a => FL.q(V, s, a)));
+        const qs = [0, 1, 2, 3].map(a => FL.q(V, s, a));
+        V[s] = Math.max(...qs);
+        const a = qs.indexOf(V[s]), [src] = FL.step(s, a);
         if (Math.abs(V[s] - old) > 1e-9) el.sweepChanged = true;
-        el.k.textContent = `sweep ${k + 1}`; el.sub.textContent = `칸 ${s} 갱신`;
-        el.fx.textContent = `v(${s}) ← max_a [r + 0.9·v(s′)]`;
-        el.fx2.textContent = `     = ${V[s].toFixed(2)}`;
-        draw([s]);
-        ctl.cap(`In-place: 칸 <b>${s}</b> 를 갱신하고 그 값을 <b>즉시</b> 표에 덮어써요 (값 표가 하나뿐).`);
-        el.cur = s - 1;
+        el.k.textContent = `sweep ${k + 1}`; el.sub.textContent = `${el.cur + 1}번째: 칸 ${s}`;
+        el.fx.textContent = src === 15 ? `V(${s}) ← 10 + 0.9·0 (→ 목표)` : `V(${s}) ← 0.9 × V(${src})  (${FL.names[a]})`;
+        el.fx2.textContent = src === 15 ? `     = 10` : `     = 0.9 × ${V[src].toFixed(2)} = ${V[s].toFixed(2)}`;
+        draw([s], src === 15 ? null : src);
+        ctl.cap(src === 15
+          ? `칸 <b>${s}</b>: → 로 목표 도착, 보상 10 → V(${s}) = 10 을 <b>바로 표에 덮어써요.</b>`
+          : `칸 <b>${s}</b>: 방금 바뀐 <b>V(${src}) = ${V[src].toFixed(2)}</b> (초록 테두리) 를 <b>바로</b> 써서 0.9 × ${V[src].toFixed(2)} = <b>${V[s].toFixed(2)}</b>. 동기식이면 옛 표의 0 을 썼을 거예요.`);
+        el.cur++;
         return true;
       },
     });
-    function draw(changed) {
+    function draw(changed, src) {
       el.cells.forEach((c, s) => {
         if (!c.val) return;
         c.rect.style.fill = heat(V[s], 10);
@@ -525,8 +533,9 @@
         const q = [0, 1, 2, 3].map(a => FL.q(V, s, a)); const m = Math.max(...q);
         c.arr.style.transform = `rotate(${FL.deg[q.indexOf(m)]}deg)`;
         c.arr.style.opacity = m > 1e-9 ? 1 : 0.15;
-        c.rect.setAttribute('stroke', changed.includes(s) ? C.orange : C.char);
-        c.rect.setAttribute('stroke-width', changed.includes(s) ? 3.5 : 1);
+        const isNew = changed.includes(s), isSrc = s === src;
+        c.rect.setAttribute('stroke', isNew ? C.orange : isSrc ? C.sprout : C.char);
+        c.rect.setAttribute('stroke-width', isNew || isSrc ? 3.5 : 1);
       });
     }
   };

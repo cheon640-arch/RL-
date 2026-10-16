@@ -196,8 +196,7 @@
         const nv = V.map((_, s) => FL.terminal(s) ? 0 : Math.max(...[0, 1, 2, 3].map(a => qsa(V, s, a))));
         nv.forEach((x, i) => { if (Math.abs(x - V[i]) > 1e-9) changed.push(i); }); V = nv;
       } else if (mode === 'inplace') {
-        for (let s = N - 1; s >= 0; s--) { // 목표에 가까운 쪽부터 갱신하면 한 번의 sweep 으로도 많이 전파됨
-          if (FL.terminal(s)) continue;
+        for (const s of [14, 13, 10, 9, 6, 8, 2, 4, 1, 3, 0]) { // 목표에 가까운 칸부터 → 한 sweep 에 끝까지 전파 (슬라이드 p.52)
           const x = Math.max(...[0, 1, 2, 3].map(a => qsa(V, s, a)));
           if (Math.abs(x - V[s]) > 1e-9) changed.push(s); V[s] = x;
         }
@@ -227,7 +226,7 @@
       root.querySelector('.readout').textContent = msg || ({
         eval: '무작위 정책(상하좌우 각 0.25)의 가치를 벨만 기대 방정식으로 반복 계산. 오른쪽은 그 가치에 대한 그리디 정책.',
         vi: '벨만 최적 방정식을 반복 적용: V_{k+1}(s) = max_a Σ p(s′|s,a)[r + γ V_k(s′)]. 명시적 정책 없이 가치만 갱신.',
-        inplace: 'In-place: 값 테이블을 하나만 두고 갱신하자마자 바로 다음 상태 계산에 사용 (15→0 순서). 동기식보다 훨씬 빨리 수렴!',
+        inplace: 'In-place: 값 표를 하나만 두고, 갱신하자마자 바로 다음 칸 계산에 사용 (목표에 가까운 칸부터). 한 sweep(k=1) 만에 최적값이 다 채워져요!',
         pi: '정책 이터레이션: (1) 현재 정책을 끝까지 평가 → (2) 그 가치에 대해 그리디하게 개선. 초기 정책 = 전부 ←.',
       })[modeSel.value];
     }
