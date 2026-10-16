@@ -12,6 +12,7 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <script defer src="assets/app.js"></script>
+<script defer src="assets/quiz-figs.js"></script>
 <script defer src="assets/quiz-data.js"></script>
 <style>
   .qz { max-width: 860px; margin: 0 auto; }
@@ -38,6 +39,16 @@
   .opt.right { border-color: var(--sprout); background: #e8f7ee; }
   .opt.wrong { border-color: #dc2626; background: #fdecec; }
   .opt:disabled { cursor: default; }
+  .qfig { margin: 4px 0 16px; padding: 12px; background: #fff; border: 1px solid rgba(23,23,23,.12); border-radius: 12px; display: flex; justify-content: center; overflow-x: auto; }
+  .qfig.small { margin: 8px 0; padding: 8px; transform-origin: left top; }
+  .qfig.small svg { max-width: 300px !important; }
+  .qfig .tbl-wrap { margin: 0; }
+  .qfig pre.code { margin: 0; width: 100%; }
+  .multi-tag { font-family: var(--font-ui); font-size: 12px; border: 1px solid var(--sienna); color: var(--sienna); border-radius: 20px; padding: 1px 9px; vertical-align: middle; }
+  .opt.chk .k { width: 18px; height: 18px; border: 1.5px solid var(--charcoal); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex: none; }
+  .opt.chk.sel .k { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .opt.missed { border-color: var(--sprout); border-style: dashed; background: #f3fbf5; }
+  .opt.missed::after { content: "← 이것도 정답"; font-family: var(--font-ui); font-size: 12px; color: #15803d; margin-left: auto; }
   .oxrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .oxrow .opt { justify-content: center; font-family: var(--font-display); font-size: 40px; padding: 18px; }
   .numrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -81,7 +92,7 @@
       <div class="chips" id="chChips"></div>
       <div class="setup-row">
         <label>문제 수 <select id="cnt"><option value="10" selected>10문제</option><option value="20">20문제</option><option value="0">전부</option></select></label>
-        <label><input type="checkbox" class="ty" value="mc" checked> 객관식</label>
+        <label><input type="checkbox" class="ty" value="mc" checked> 객관식·복수선택</label>
         <label><input type="checkbox" class="ty" value="ox" checked> OX</label>
         <label><input type="checkbox" class="ty" value="num" checked> 계산</label>
         <label><input type="checkbox" id="shuffle" checked> 순서 섞기</label>
@@ -137,7 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const render = el => window.RL_RENDER_MATH && window.RL_RENDER_MATH(el);
   const CH = [['all', '전체'], ['02', '02 MDP'], ['03', '03 Bellman'], ['04', '04 DP'], ['05', '05 MC'], ['06', '06 TD']];
-  const typeName = { mc: '객관식', ox: 'OX', num: '계산' };
+  const typeName = { mc: '객관식', multi: '복수 선택', ox: 'OX', num: '계산' };
+  const tyOf = q => q.type === 'multi' ? 'mc' : q.type;
   let chSel = S.get('quiz-ch') || 'all';
   let wrong = new Set(S.get('quiz-wrong') || []);
   let stats = S.get('quiz-stats') || {};
@@ -171,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   $('startBtn').onclick = () => {
     const types = [...document.querySelectorAll('.ty:checked')].map(x => x.value);
-    let list = Q.filter(q => (chSel === 'all' || q.ch === chSel) && types.includes(q.type));
+    let list = Q.filter(q => (chSel === 'all' || q.ch === chSel) && types.includes(tyOf(q)));
     if ($('shuffle').checked) shuffle(list);
     const n = +$('cnt').value; if (n) list = list.slice(0, n);
     start(list, chSel);
@@ -184,12 +196,18 @@ document.addEventListener('DOMContentLoaded', () => {
     $('qpos').textContent = `${idx + 1} / ${set.length}`;
     $('qbar').style.width = (idx / set.length * 100) + '%';
     $('qtag').textContent = `${q.ch}장 · ${typeName[q.type]}`;
-    $('qtext').innerHTML = q.q;
+    $('qtext').innerHTML = (q.fig ? `<div class="qfig">${q.fig}</div>` : '') + q.q + (q.type === 'multi' ? ' <span class="multi-tag">복수 선택</span>' : '');
     const box = $('qinput');
-    if (q.type === 'mc') box.innerHTML = `<div class="opts">${q.c.map((c, i) => `<button type="button" class="opt" data-i="${i}"><span class="k">${i + 1}</span><span>${c}</span></button>`).join('')}</div>`;
+    if (q.type === 'mc' || q.type === 'multi') box.innerHTML = `<div class="opts">${q.c.map((c, i) => `<button type="button" class="opt${q.type === 'multi' ? ' chk' : ''}" data-i="${i}"><span class="k">${i + 1}</span><span>${c}</span></button>`).join('')}</div>`;
     else if (q.type === 'ox') box.innerHTML = `<div class="oxrow"><button type="button" class="opt" data-i="1">O</button><button type="button" class="opt" data-i="0">X</button></div>`;
     else box.innerHTML = `<div class="numrow"><input type="text" inputmode="decimal" id="numIn" placeholder="숫자 입력 (예: -2.25)" autocomplete="off"><span class="hint-keys">소수·음수 OK, 1/4 같은 분수도 OK</span></div>`;
-    box.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (checked) return; picked = +b.dataset.i; box.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', x === b)); });
+    if (q.type === 'multi') picked = new Set();
+    box.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+      if (checked) return;
+      const i = +b.dataset.i;
+      if (q.type === 'multi') { picked.has(i) ? picked.delete(i) : picked.add(i); b.classList.toggle('sel', picked.has(i)); return; }
+      picked = i; box.querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', x === b));
+    });
     const fb = $('fb'); fb.className = 'fb'; fb.innerHTML = '';
     $('nextBtn').textContent = '확인';
     render($('qtext')); render(box);
@@ -203,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function fmtAns(q) {
     if (q.type === 'mc') return `${q.a + 1}번 · ${q.c[q.a]}`;
+    if (q.type === 'multi') return q.a.map(i => `${i + 1}번`).join(', ');
     if (q.type === 'ox') return q.a ? 'O' : 'X';
     return String(q.a);
   }
@@ -214,6 +233,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isNaN(v)) { $('numIn').focus(); return; }
       given = $('numIn').value; ok = Math.abs(v - q.a) <= (q.tol ?? 0.01);
       $('numIn').classList.add(ok ? 'right' : 'wrong'); $('numIn').disabled = true;
+    } else if (q.type === 'multi') {
+      if (!picked.size) return;
+      const want = new Set(q.a);
+      ok = picked.size === want.size && [...picked].every(i => want.has(i));
+      given = [...picked].sort().map(i => `${i + 1}번`).join(', ');
+      $('qinput').querySelectorAll('.opt').forEach(b => {
+        b.disabled = true;
+        const i = +b.dataset.i;
+        if (want.has(i)) b.classList.add(picked.has(i) ? 'right' : 'missed'); else if (picked.has(i)) b.classList.add('wrong');
+      });
     } else {
       if (picked === null) return;
       const correct = q.type === 'mc' ? q.a : (q.a ? 1 : 0);
@@ -245,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') { e.preventDefault(); next(); return; }
     if (checked || q.type === 'num') return;
     let i = null;
-    if (q.type === 'mc' && /^[1-9]$/.test(e.key) && +e.key <= q.c.length) i = +e.key - 1;
+    if ((q.type === 'mc' || q.type === 'multi') && /^[1-9]$/.test(e.key) && +e.key <= q.c.length) i = +e.key - 1;
     if (q.type === 'ox') { if (/^[oO1ㅐ]$/.test(e.key)) i = 1; if (/^[xX2ㅌ]$/.test(e.key)) i = 0; }
     if (i !== null) $('qinput').querySelector(`.opt[data-i="${i}"]`)?.click();
   });
@@ -264,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const byCh = {};
     answers.forEach(a => { const k = a.q.ch; byCh[k] = byCh[k] || [0, 0]; byCh[k][1]++; if (a.ok) byCh[k][0]++; });
     $('resBreak').innerHTML = Object.keys(byCh).sort().map(k => `<div class="stat">${k}장<b>${byCh[k][0]} / ${byCh[k][1]}</b>${Math.round(byCh[k][0] / byCh[k][1] * 100)}%</div>`).join('');
-    $('review').innerHTML = answers.map((a, i) => `<div class="rv"><div class="q">${a.ok ? '✅' : '❌'} <b>${i + 1}.</b> ${a.q.q}</div>
+    $('review').innerHTML = answers.map((a, i) => `<div class="rv"><div class="q">${a.ok ? "✅" : "❌"} <b>${i + 1}.</b> ${a.q.q}</div>${a.q.fig ? `<div class="qfig small">${a.q.fig}</div>` : ""}
       ${a.ok ? '' : `<div class="yours">내 답: ${a.given}</div>`}<div class="a">정답: ${fmtAns(a.q)}</div><div class="e">${a.q.ex} · <a href="${a.q.sec}" target="_blank">섹션 보기</a></div></div>`).join('');
     $('retryWrong').disabled = !answers.some(a => !a.ok);
     const chs = window.RL_CHAPTERS || [], ci = chs.findIndex(c => c.id === set.label);
@@ -282,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function drawWrong() {
     const list = Q.filter(q => wrong.has(q.id));
     $('wnCount').textContent = list.length ? `${list.length}문제` : '';
-    $('wnList').innerHTML = list.length ? list.map(q => `<div class="rv"><div class="q"><span class="qtag">${q.ch}장</span> ${q.q}</div><div class="a">정답: ${fmtAns(q)}</div><div class="e">${q.ex} · <a href="${q.sec}" target="_blank">섹션 보기</a></div></div>`).join('')
+    $('wnList').innerHTML = list.length ? list.map(q => `<div class="rv"><div class="q"><span class="qtag">${q.ch}장</span> ${q.q}</div>${q.fig ? `<div class="qfig small">${q.fig}</div>` : ""}<div class="a">정답: ${fmtAns(q)}</div><div class="e">${q.ex} · <a href="${q.sec}" target="_blank">섹션 보기</a></div></div>`).join('')
       : '<p style="color:var(--muted)">아직 틀린 문제가 없어요 👍</p>';
     $('wnClear').hidden = !list.length;
     render($('wnList'));
