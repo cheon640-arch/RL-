@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모의고사 — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<style>
+  .exam-bar { position: sticky; top: 64px; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; background: var(--cream); border: 1.5px solid var(--charcoal); border-radius: 14px; padding: 10px 16px; margin: 0 0 22px; box-shadow: var(--shadow-card); font-family: var(--font-ui); font-size: 14px; }
+  .exam-bar .timer { font-family: var(--font-mono); font-size: 20px; color: var(--cocoa); min-width: 70px; }
+  .exam-bar .timer.low { color: #dc2626; }
+  .exam-bar .score { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+  .set-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .set-tabs button { font-family: var(--font-ui); font-size: 14px; border: 1.5px solid var(--mist); background: var(--cream); border-radius: 20px; padding: 6px 16px; cursor: pointer; color: var(--charcoal); }
+  .set-tabs button.on { border-color: var(--charcoal); background: #fff; box-shadow: var(--shadow-btn); }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .sec-head .rule { font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+  .q { border-top: 1px dashed rgba(23,23,23,.18); padding: 16px 0 6px; }
+  .q:first-of-type { border-top: 0; }
+  .q .qn { font-family: var(--font-ui); font-weight: 600; color: var(--sienna); margin-right: 6px; }
+  .q .stem { margin: 0 0 10px; }
+  .row-ox { display: flex; gap: 10px; }
+  .row-ox button, .mc-opt { font: inherit; font-size: 16px; border: 1.5px solid var(--charcoal); background: #fff; border-radius: 10px; padding: 6px 18px; cursor: pointer; color: var(--cocoa); }
+  .row-ox button { font-family: var(--font-display); font-size: 22px; padding: 4px 22px; }
+  .row-ox button.sel, .mc-opt.sel { background: #fff0e6; border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
+  .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mc-opt { text-align: left; display: flex; gap: 10px; align-items: baseline; }
+  .mc-opt .k { font-family: var(--font-ui); font-weight: 600; color: var(--sienna); }
+  .graded .row-ox button, .graded .mc-opt { cursor: default; }
+  .row-ox button.right, .mc-opt.right { border-color: #15803d; background: #e8f7ee; box-shadow: inset 0 0 0 1px #15803d; }
+  .row-ox button.wrong, .mc-opt.wrong { border-color: #dc2626; background: #fdecec; box-shadow: inset 0 0 0 1px #dc2626; }
+  .mc-opt.missed { border-style: dashed; border-color: #15803d; }
+  textarea.ans { width: 100%; min-height: 70px; font: inherit; font-size: 16px; border: 1.5px solid var(--charcoal); border-radius: 10px; padding: 8px 12px; background: #fff; color: var(--cocoa); resize: vertical; }
+  textarea.ans.big { min-height: 120px; }
+  .key { display: none; margin-top: 10px; background: #fff; border: 1.5px dashed var(--sienna); border-radius: 10px; padding: 10px 14px; font-size: 16px; }
+  .graded .key { display: block; }
+  .key .k-title { font-family: var(--font-hand); color: var(--sienna); font-size: 21px; }
+  .self { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; font-family: var(--font-ui); font-size: 14px; }
+  .self button { font-family: var(--font-ui); font-size: 13px; border: 1.5px solid var(--mist); background: var(--cream); border-radius: 16px; padding: 4px 12px; cursor: pointer; }
+  .self button.on { border-color: var(--charcoal); background: #fff; box-shadow: var(--shadow-btn); }
+  .self input { width: 64px; font: inherit; border: 1.5px solid var(--charcoal); border-radius: 8px; padding: 3px 8px; }
+  .pts { font-family: var(--font-ui); font-size: 13px; color: var(--muted); margin-left: 6px; }
+  .got { font-family: var(--font-ui); font-size: 13px; font-weight: 600; margin-left: 8px; }
+  .got.p { color: #15803d; } .got.n { color: #dc2626; } .got.z { color: var(--muted); }
+  .part { margin: 14px 0 0 0; padding-left: 14px; border-left: 3px solid #ffd2b8; }
+  .part .pq { margin: 0 0 6px; }
+  .result-card { text-align: center; }
+  .result-card .big { font-family: var(--font-display); font-weight: 600; font-size: 72px; line-height: 1; color: var(--cocoa); }
+  @media (max-width: 640px) { .mc-grid { grid-template-columns: 1fr; } .exam-bar { top: 56px; } }
+  .pill.primary { background: var(--orange); color: #fff; }
+</style>
+</head>
+<body data-ch="mock">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">시험 대비 · 100점 · 다양한 형식</span>
+    <h1 class="display">mock<br>exam</h1>
+    <p class="lede">아직 시험 형식을 모르니 <span class="mk">진위형 · 선다형 · 단답/계산 · 서술/증명</span>을 골고루 섞었어요 (배점은 임의). 강의자료 기호 그대로, Sutton &amp; Barto 2판 스타일 문제 포함. 1회 기본, 2회 심화, 3회 종합(코드·빈칸·그림). 진위·선다는 자동 채점, 나머지는 모범답안 보고 직접 채점해요.</p>
+    <div class="set-tabs" id="setTabs"></div>
+    <div data-sticker="star" data-rot="8" style="right:8%;top:80px;width:64px;height:64px"></div>
+    <div data-sticker="bolt" data-rot="-10" style="right:20%;top:200px;width:60px;height:60px"></div>
+  </div>
+
+  <div class="exam-bar" id="bar">
+    <div><span class="timer" id="timer">75:00</span> <button class="pill small" type="button" id="timerBtn">시작</button></div>
+    <div class="score" id="score">— / 100</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill small primary" type="button" id="gradeBtn">채점하기</button><button class="pill small" type="button" id="resetBtn">답안 지우기</button></div>
+  </div>
+
+  <main id="exam"></main>
+</div>
+
+<script>
+(function () {
+  const R = String.raw;
+  const C = { ink: '#2b1a07', o: '#ff6f1e', s: '#ce500a', soft: '#fff0e6', goal: '#ffd2b8', mist: '#a8a29e' };
+  /* 1차원 격자: cells = [{l:'라벨', t:'T'|'G'|'', v:'값'}] */
+  const strip = (cells, note) => {
+    const w = 78, W = cells.length * w + 20, H = note ? 112 : 92;
+    let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${Math.min(W, 520)}px;height:auto" font-family="Geist, Gowun Dodum, sans-serif" font-size="13">`;
+    cells.forEach((c, i) => {
+      const x = 10 + i * w, fill = c.t === 'T' ? '#f7efe9' : c.t === 'G' ? C.goal : '#fff';
+      s += `<rect x="${x}" y="14" width="${w - 6}" height="58" rx="8" fill="${fill}" stroke="${C.ink}" stroke-width="1.4"/>`;
+      s += `<text x="${x + (w - 6) / 2}" y="${c.v != null ? 38 : 48}" text-anchor="middle" font-weight="600" fill="${c.t ? C.s : C.ink}">${c.l}</text>`;
+      if (c.v != null) s += `<text x="${x + (w - 6) / 2}" y="60" text-anchor="middle" font-size="12" fill="#6b5d4f">${c.v}</text>`;
+    });
+    if (note) s += `<text x="${W / 2}" y="98" text-anchor="middle" font-size="12" fill="#6b5d4f">${note}</text>`;
+    return s + '</svg>';
+  };
+  /* 작은 MDP 그림 (2상태) */
+  const twoState = `<svg viewBox="0 0 420 170" style="width:100%;max-width:420px;height:auto" font-family="Geist, Gowun Dodum, sans-serif" font-size="13">
+    <defs><marker id="rm1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="${C.ink}"/></marker></defs>
+    <circle cx="110" cy="105" r="30" fill="#fff" stroke="${C.ink}" stroke-width="1.5"/><text x="110" y="110" text-anchor="middle" font-weight="600">A</text>
+    <circle cx="310" cy="105" r="30" fill="#fff" stroke="${C.ink}" stroke-width="1.5"/><text x="310" y="110" text-anchor="middle" font-weight="600">B</text>
+    <path d="M96 78 C 70 20, 150 20, 124 78" fill="none" stroke="${C.ink}" stroke-width="1.4" marker-end="url(#rm1)"/><text x="110" y="22" text-anchor="middle" fill="${C.s}">stay, r = +1</text>
+    <line x1="142" y1="105" x2="276" y2="105" stroke="${C.ink}" stroke-width="1.4" marker-end="url(#rm1)"/><text x="210" y="96" text-anchor="middle" fill="${C.s}">go, r = 0</text>
+    <path d="M296 78 C 270 20, 350 20, 324 78" fill="none" stroke="${C.ink}" stroke-width="1.4" marker-end="url(#rm1)"/><text x="310" y="22" text-anchor="middle" fill="${C.s}">stay, r = +2</text>
+    <text x="210" y="160" text-anchor="middle" font-size="12" fill="#6b5d4f">모든 전이는 결정적 (확률 1)</text></svg>`;
+  const tbl = (head, rows) => `<div class="tbl-wrap"><table class="t" style="font-size:15px"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const code = src => `<pre class="code" style="font-size:13px">${src.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`;
+
+  const OX = { title: '1. 진위형', rule: '15점, 각 3점, 오답 시 −1점', type: 'ox', pts: 3, pen: 1 };
+  const MC = { title: '2. 선다형', rule: '15점, 각 3점, 오답 시 −1점 (정답 모두 골라야 정답)', type: 'mc', pts: 3, pen: 1 };
+  const SA = { title: '3. 단답·계산', rule: '30점, 각 6점, 오답 시 0점', type: 'sa', pts: 6, pen: 0 };
+
+  window.RL_MOCK = [
+  { id: 1, name: '모의고사 1회', sections: [
+    { ...OX, items: [
+      { q: '마르코프 성질이란 다음 상태가 현재 상태에만 의존하고, 그 이전의 이력과는 독립이라는 성질이다.', a: true, ex: R`\(P[S_{t+1} \mid S_t] = P[S_{t+1} \mid S_1, \dots, S_t]\). (02장 마르코프 성질)` },
+      { q: '할인율 γ 가 0 에 가까울수록 에이전트는 먼 미래의 보상을 더 중요하게 고려한다.', a: false, ex: 'γ 가 0 에 가까우면 <b>근시안적</b> (당장의 보상 위주), 1 에 가까우면 원시안적. (02장 Return)' },
+      { q: '벨만 최적 방정식은 max 연산 때문에 비선형이므로, 벨만 기대 방정식처럼 행렬 역산으로 한 번에 풀 수 없다.', a: true, ex: R`기대 방정식은 선형 → \(v_\pi = (I - \gamma P^\pi)^{-1} R^\pi\). 최적 방정식은 비선형 → 가치/정책 이터레이션 같은 반복법. (03장)` },
+      { q: '몬테카를로 방법은 에피소드가 끝나야 리턴을 계산할 수 있으므로, 끝이 없는 continuing task 에 그대로 적용하기 어렵다.', a: true, ex: 'MC 는 완전한 에피소드의 리턴 \\(G_t\\) 가 필요. TD 는 매 스텝 업데이트하므로 continuing task 가능. (05·06장)' },
+      { q: 'Q-learning 은 행동 정책과 목표 정책이 같은 on-policy 방법이다.', a: false, ex: 'Q-learning 은 행동은 ε-greedy, 목표는 greedy(max) → <b>off-policy</b>. SARSA 가 on-policy. (06장)' }
+    ] },
+    { ...MC, items: [
+      { q: R`MDP \(\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle\) 의 구성 요소인 것을 모두 고르라.`, c: ['상태 집합', '전이확률', '할인율', '정책 π'], a: [0, 1, 2], ex: '정책은 MDP 가 아니라 <b>에이전트</b>의 구성요소. (02장)' },
+      { q: '부트스트래핑(추정값으로 추정값을 갱신)을 사용하는 방법을 모두 고르라.', c: ['DP 정책 평가', 'MC 예측', 'TD(0)', 'SARSA'], a: [0, 2, 3], ex: 'MC 는 실제 리턴 \\(G_t\\) 를 쓰므로 부트스트래핑 X. (06장 DP·MC·TD 비교)' },
+      { q: '환경의 모델 \\(p(s\', r \\mid s, a)\\) 을 알아야만 쓸 수 있는 방법을 모두 고르라.', c: ['정책 이터레이션', '가치 이터레이션', 'MC 제어', 'Q-learning'], a: [0, 1], ex: 'DP 계열만 모델 필요. MC·TD 는 샘플(경험)로 학습. (05장 DP vs RL)' },
+      { q: '행동이 4 개, ε = 0.2 인 ε-greedy 정책에서 greedy 행동이 선택될 확률은?', c: ['0.80', '0.85', '0.95', '0.05'], a: [1], ex: R`\(\varepsilon/m + 1 - \varepsilon = 0.2/4 + 0.8 = 0.85\). 나머지 각 행동은 \(0.05\). (05장)` },
+      { q: 'GLIE 조건을 만족하는 탐험 스케줄은?', c: ['ε = 0.1 로 고정', 'k 번째 에피소드에서 ε = 1/k', '처음부터 ε = 0', '항상 ε = 1'], a: [1], ex: '모든 (s,a) 를 무한히 방문 + 정책이 greedy 로 수렴. ε 고정이면 greedy 로 수렴 안 함, ε = 0 이면 탐험 부족. (05장 GLIE)' }
+    ] },
+    { ...SA, items: [
+      { q: '한 에피소드에서 보상이 \\(R_1 = 1, R_2 = 0, R_3 = 2, R_4 = 5\\) 이고 그 뒤 종료되었다. γ = 0.5 일 때 \\(G_0\\) 는?', ans: R`\(G_0 = 1 + 0.5\cdot0 + 0.25\cdot2 + 0.125\cdot5 = 2.125\)` },
+      { q: '끝없이 매 스텝 보상 −1 을 받는 continuing task 에서 γ = 0.9 일 때 리턴 \\(G_t\\) 는?', ans: R`\(\sum_{k=0}^\infty 0.9^k(-1) = \dfrac{-1}{1-0.9} = -10\)` },
+      { q: '상태 s 에서 \\(q_\\pi(s, a_1) = 4\\), \\(q_\\pi(s, a_2) = 2\\) 이고 \\(\\pi(a_1 \\mid s) = 0.7\\), \\(\\pi(a_2 \\mid s) = 0.3\\) 이다. \\(v_\\pi(s)\\) 는?', ans: R`\(v_\pi(s) = \sum_a \pi(a \mid s)\, q_\pi(s,a) = 0.7\times4 + 0.3\times2 = 3.4\)` },
+      { q: 'MC 예측에서 상태 s 를 지금까지 4 번 방문해 \\(V(s) = 5\\) 이다. 5 번째 방문에서 리턴 \\(G = 10\\) 을 얻었다. 증분 평균으로 갱신한 \\(V(s)\\) 는?', ans: R`\(N = 5\), \(V \leftarrow V + \frac{1}{N}(G - V) = 5 + \frac{1}{5}(10 - 5) = 6\)` },
+      { q: 'TD(0) 에서 \\(V(s) = 2\\), \\(V(s\') = 4\\), 보상 \\(R = 1\\), γ = 0.9, α = 0.1 이다. TD 오차 δ 와 갱신된 \\(V(s)\\) 는?', ans: R`\(\delta = R + \gamma V(s') - V(s) = 1 + 3.6 - 2 = 2.6\)<br>\(V(s) \leftarrow 2 + 0.1\times2.6 = 2.26\)` }
+    ] },
+    { title: '4. 서술·계산 — 반복적 정책 평가', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: '아래 1차원 격자에서 상태 1, 2, 3 은 비종료, 양 끝 T 는 종료 상태다. 매 스텝 보상은 −1, γ = 1 이고, 정책 π 는 왼쪽/오른쪽을 각각 확률 0.5 로 고른다. 종료 상태의 가치는 0 이다.' + strip([{ l: 'T', t: 'T' }, { l: '1' }, { l: '2' }, { l: '3' }, { l: 'T', t: 'T' }], '← 0.5 · 0.5 →, 매 스텝 r = −1'),
+        parts: [
+          { p: 8, q: R`\(V_0 = 0\) 에서 시작해 동기식(synchronous) 반복적 정책 평가로 \(V_1, V_2, V_3\) 를 구하라.`, ans: R`\(V_{k+1}(s) = 0.5(-1 + V_k(s-1)) + 0.5(-1 + V_k(s+1))\)<br>\(V_1 = (-1, -1, -1)\)<br>\(V_2 = (-1.5, -2, -1.5)\)<br>\(V_3 = (-2, -2.5, -2)\)`, rubric: '갱신식 2점, 각 반복 2점' },
+          { p: 6, q: R`벨만 기대 방정식을 연립하여 참값 \(v_\pi(1), v_\pi(2), v_\pi(3)\) 를 구하라.`, ans: R`대칭이므로 \(v_1 = v_3\).<br>\(v_1 = 0.5(-1 + 0) + 0.5(-1 + v_2) = -1 + 0.5v_2\)<br>\(v_2 = 0.5(-1 + v_1) + 0.5(-1 + v_3) = -1 + v_1\)<br>→ \(v_1 = -1 + 0.5(-1 + v_1)\) → \(v_1 = v_3 = -3\), \(v_2 = -4\)`, rubric: '방정식 3점, 해 3점' },
+          { p: 6, q: R`\(v_\pi\) 에 대해 greedy 하게 정책을 개선하라. 각 상태의 \(q_\pi(s, \text{left}), q_\pi(s, \text{right})\) 를 쓰고 개선된 정책을 제시하라.`, ans: R`\(q(1,\text{L}) = -1 + 0 = -1\), \(q(1,\text{R}) = -1 + v_2 = -5\) → <b>L</b><br>\(q(2,\text{L}) = -1 + v_1 = -4\), \(q(2,\text{R}) = -4\) → <b>동률 (어느 쪽이든)</b><br>\(q(3,\text{L}) = -5\), \(q(3,\text{R}) = -1\) → <b>R</b><br>→ 가까운 끝으로 가는 정책 (정책 개선 정리에 의해 \(v_{\pi'} \ge v_\pi\))`, rubric: 'q 값 4점, 정책 2점' }
+        ] }
+    ] },
+    { title: '5. 서술·계산 — SARSA vs Q-learning', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: R`에이전트가 상태 s 에서 행동 right 를 하여 보상 \(R = -1\) 을 받고 \(s'\) 으로 갔다. ε-greedy 로 \(s'\) 에서 고른 다음 행동은 down 이다. 현재 Q 값은 다음과 같고, α = 0.5, γ = 1 이다.` + tbl(['', 'up', 'down', 'right'], [['\\(Q(s\', \\cdot)\\)', '−3', '−10', '−2'], ['\\(Q(s, \\text{right})\\)', '', '', '−4']]),
+        parts: [
+          { p: 6, q: R`SARSA 로 \(Q(s, \text{right})\) 를 갱신하라.`, ans: R`타깃 \(= R + \gamma Q(s', A') = -1 + (-10) = -11\)<br>\(Q \leftarrow -4 + 0.5(-11 - (-4)) = -7.5\)`, rubric: '타깃 3점, 결과 3점' },
+          { p: 6, q: R`Q-learning 으로 \(Q(s, \text{right})\) 를 갱신하라.`, ans: R`타깃 \(= R + \gamma \max_a Q(s', a) = -1 + (-2) = -3\)<br>\(Q \leftarrow -4 + 0.5(-3 - (-4)) = -3.5\)`, rubric: '타깃 3점, 결과 3점' },
+          { p: 8, q: 'Cliff Walking 예제에서 ε-greedy (ε 고정) 로 학습할 때 SARSA 와 Q-learning 이 학습하는 경로와, 학습 중 에피소드당 보상(온라인 성능)이 어떻게 다른지 이유와 함께 설명하라.', ans: 'Q-learning: 타깃이 greedy(max) 라 <b>절벽 바로 옆 최단 경로</b>(최적 경로)를 학습. 하지만 행동은 ε-greedy 라 가끔 절벽으로 떨어져 학습 중 보상은 더 낮음.<br>SARSA: 실제로 할 행동(ε-greedy 포함)을 타깃에 반영하는 on-policy → 탐험으로 떨어질 위험까지 고려해 <b>절벽에서 떨어진 안전한 경로</b>를 학습, 학습 중 보상은 더 높음.<br>ε 를 점차 0 으로 줄이면 둘 다 최적 경로로 수렴.', rubric: '두 경로 4점, 온라인 성능과 이유 4점' }
+        ] }
+    ] }
+  ] },
+
+  { id: 2, name: '모의고사 2회 (심화)', sections: [
+    { ...OX, items: [
+      { q: '모든 유한 MDP 에는 모든 정책보다 좋거나 같은 최적 정책이 적어도 하나 존재한다.', a: true, ex: '최적 정책 정리. 부분순서로 비교가 안 되는 정책 쌍이 있어도, 모든 정책 이상인 정책은 항상 존재. (02장)' },
+      { q: R`γ < 1 이면 벨만 기대 연산자 \(T^\pi\) 는 무한 노름에 대해 γ-축약사상이다.`, a: true, ex: R`\(\|T^\pi v - T^\pi u\|_\infty \le \gamma \|v - u\|_\infty\) → 바나흐 고정점 정리로 반복 정책 평가가 \(v_\pi\) 로 수렴. (04장)` },
+      { q: '가치 이터레이션은 매 반복마다 정책 평가를 수렴할 때까지 수행한 뒤 정책을 개선한다.', a: false, ex: '그것은 <b>정책 이터레이션</b>. 가치 이터레이션은 벨만 최적 백업을 한 번씩만 적용 (평가를 1 스텝에서 끊은 것). (04장)' },
+      { q: 'TD(λ) 에서 λ = 1 이면 TD(0) 과 같아진다.', a: false, ex: 'λ = 0 → TD(0), λ = 1 → MC. (06장)' },
+      { q: 'Batch 학습에서 TD(0) 은 데이터를 가장 잘 설명하는 마르코프 모델(최대우도 MDP)에 맞는 가치를 찾는 반면, MC 는 관측된 리턴의 평균 제곱 오차를 최소화하는 가치를 찾는다.', a: true, ex: 'AB 예제: MC 는 V(A) = 0, TD 는 V(A) = 0.75. (06장 Batch MC/TD)' }
+    ] },
+    { ...MC, items: [
+      { q: R`AB 예제: 8 개 에피소드 (A, 0, B, 0) 1 번, (B, 1) 6 번, (B, 0) 1 번 을 γ = 1 로 batch 학습했다. 옳은 것을 모두 고르라.`, c: ['MC 와 TD 모두 V(B) = 0.75', 'batch MC 의 V(A) = 0', 'batch TD 의 V(A) = 0.75', 'batch TD 의 V(A) = 0'], a: [0, 1, 2], ex: 'B 에서는 8 번 중 6 번 보상 1 → 0.75. A 의 유일한 리턴은 0 (MC). TD 는 A → B (보상 0) 이므로 V(A) = 0 + V(B) = 0.75. (06장)' },
+      { q: '정책 이터레이션에 대한 설명으로 옳은 것을 모두 고르라.', c: ['정책 평가와 정책 개선을 번갈아 수행한다', '유한 MDP 에서 유한 번 안에 최적 정책에 도달한다', '정책 개선 단계에서 각 상태의 행동은 \\(\\arg\\max_a q_\\pi(s,a)\\) 로 정한다', '정책 평가 없이 정책 개선만 반복해도 최적 정책에 도달한다'], a: [0, 1, 2], ex: '정책 수가 유한하고 개선이 단조이므로 유한 번에 수렴. (04장)' },
+      { q: R`n-step TD 에서 \(n \to \infty\) (에피소드 끝까지) 로 하면 무엇과 같아지는가?`, c: ['TD(0)', 'MC', 'DP', 'SARSA'], a: [1], ex: R`\(G_t^{(\infty)} = G_t\) → MC. (06장)` },
+      { q: R`\(|\mathcal{S}| = n\) 인 MRP 에서 \(v = (I - \gamma P)^{-1} R\) 로 직접 풀 때의 계산 복잡도는?`, c: ['O(n)', 'O(n²)', 'O(n³)', 'O(2ⁿ)'], a: [2], ex: '역행렬 계산 O(n³) → 상태가 많으면 반복법(DP, MC, TD) 사용. (03장)' },
+      { q: 'Eligibility trace (backward view) 에 대한 설명으로 옳은 것을 모두 고르라.', c: [R`\(E_t(s) = \gamma\lambda E_{t-1}(s) + \mathbf{1}(S_t = s)\)`, '최근에 자주 방문한 상태일수록 TD 오차를 많이 나눠 받는다', 'λ = 0 이면 현재 상태만 갱신되어 TD(0) 과 같다', '에피소드가 끝나야만 갱신할 수 있다'], a: [0, 1, 2], ex: 'Backward view 는 매 스텝 온라인으로 갱신. (06장)' }
+    ] },
+    { ...SA, items: [
+      { q: R`2-step 리턴을 구하라: \(R_{t+1} = 1\), \(R_{t+2} = 2\), \(V(S_{t+2}) = 10\), γ = 0.9.`, ans: R`\(G_t^{(2)} = R_{t+1} + \gamma R_{t+2} + \gamma^2 V(S_{t+2}) = 1 + 1.8 + 8.1 = 10.9\)` },
+      { q: 'λ = 0.5 일 때 λ-return 에서 \\(G_t^{(1)}, G_t^{(2)}, G_t^{(3)}\\) 에 곱해지는 가중치를 각각 쓰라.', ans: R`\((1-\lambda)\lambda^{n-1}\): \(0.5,\; 0.25,\; 0.125\)` },
+      { q: '두 상태 MRP: \\(R = (1, 2)\\), 전이확률 \\(P = \\begin{pmatrix} 0 & 1 \\\\ 0.5 & 0.5 \\end{pmatrix}\\), γ = 0.5. \\(v = (I - \\gamma P)^{-1} R\\) 로 \\(v(s_1), v(s_2)\\) 를 구하라.', ans: R`\(I - \gamma P = \begin{pmatrix} 1 & -0.5 \\ -0.25 & 0.75 \end{pmatrix}\), det = 0.625<br>\(v = \frac{1}{0.625}\begin{pmatrix} 0.75 & 0.5 \\ 0.25 & 1 \end{pmatrix}\begin{pmatrix} 1 \\ 2 \end{pmatrix} = (2.8,\; 3.6)\)<br>검산: \(v_1 = 1 + 0.5\times3.6 = 2.8\) ✓` },
+      { q: 'accumulating trace, γ = 0.9, λ = 0.8. 상태 s 를 t = 0 과 t = 2 에 방문했다 (t = 1 에는 다른 상태). \\(E_2(s)\\) 는?', ans: R`\(E_0 = 1\), \(E_1 = 0.72\), \(E_2 = 0.72\times0.72 + 1 = 1.5184\)` },
+      { q: '에피소드 A, B, A, B, T 에서 각 전이 후 보상이 1, 0, 2, 3 (γ = 1) 이다. first-visit MC 와 every-visit MC 의 V(A) 추정값을 각각 구하라 (이 에피소드 하나만 사용).', ans: R`\(G_0 = 6\) (A), \(G_1 = 5\) (B), \(G_2 = 5\) (A), \(G_3 = 3\) (B)<br>first-visit: V(A) = 6, every-visit: V(A) = (6 + 5)/2 = 5.5` }
+    ] },
+    { title: '4. 서술 — 가치 이터레이션', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: '아래 MDP 에서 A 에서는 stay (보상 +1, A 에 머묾) 또는 go (보상 0, B 로 이동), B 에서는 stay (보상 +2) 만 가능하다. γ = 0.9.<div class="qfig" style="margin-top:10px">' + twoState + '</div>',
+        parts: [
+          { p: 8, q: R`\(V_0 = 0\) 에서 가치 이터레이션으로 \(V_1, V_2, V_3\) 를 구하라.`, ans: R`\(V_{k+1}(A) = \max(1 + 0.9V_k(A),\; 0 + 0.9V_k(B))\), \(V_{k+1}(B) = 2 + 0.9V_k(B)\)<br>\(V_1 = (1, 2)\), \(V_2 = (\max(1.9, 1.8), 3.8) = (1.9, 3.8)\), \(V_3 = (\max(2.71, 3.42), 5.42) = (3.42, 5.42)\)`, rubric: '갱신식 2점, 각 반복 2점' },
+          { p: 6, q: R`\(v_*(A), v_*(B)\) 와 최적 정책을 구하라. \(V_2\) 에 대한 greedy 정책은 최적인가?`, ans: R`\(v_*(B) = 2/(1-0.9) = 20\)<br>A: stay 영원히 \(= 1/(1-0.9) = 10\), go \(= 0 + 0.9\times20 = 18\) → \(v_*(A) = 18\), \(\pi_*(A) = \text{go}\)<br>\(V_2\) 에 대한 greedy 는 A 에서 stay (1.9 > 1.8) → 최적 아님. 반복이 진행되며 (k = 3 부터) go 로 바뀜.`, rubric: 'v* 4점, V2 greedy 판단 2점' },
+          { p: 6, q: 'γ 가 얼마보다 클 때 A 에서 go 가 최적인가? 할인율의 의미와 연결해 설명하라.', ans: R`stay: \(\frac{1}{1-\gamma}\), go: \(\gamma\cdot\frac{2}{1-\gamma}\) → go 가 낫다 ⇔ \(2\gamma > 1\) ⇔ <b>γ > 0.5</b><br>γ 가 크면 미래의 큰 보상(+2)을 위해 당장의 보상(+1)을 포기할 가치가 있고, 작으면 근시안적이 되어 stay 가 낫다.`, rubric: '조건 4점, 설명 2점' }
+        ] }
+    ] },
+    { title: '5. 증명 — 정책 개선 정리', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: R`결정적 정책 π, π' 에 대해 모든 상태에서 \(q_\pi(s, \pi'(s)) \ge v_\pi(s)\) 이면 \(v_{\pi'}(s) \ge v_\pi(s)\) 임을 보이고자 한다.`,
+        parts: [
+          { p: 12, q: R`\(v_\pi(s) \le q_\pi(s, \pi'(s))\) 에서 출발하여 \(v_\pi(s) \le v_{\pi'}(s)\) 를 유도하라.`, ans: R`\(v_\pi(s) \le q_\pi(s, \pi'(s)) = \mathbb{E}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s, A_t = \pi'(s)]\)<br>\(= \mathbb{E}_{\pi'}[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s]\)<br>\(\le \mathbb{E}_{\pi'}[R_{t+1} + \gamma q_\pi(S_{t+1}, \pi'(S_{t+1})) \mid S_t = s]\)<br>\(= \mathbb{E}_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s]\)<br>\(\le \cdots \le \mathbb{E}_{\pi'}[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s] = v_{\pi'}(s)\)`, rubric: 'q 의 정의로 전개 4점, 가정을 다음 상태에 반복 적용 4점, 리턴의 기댓값 = v_π\' 결론 4점' },
+          { p: 8, q: R`greedy 개선 \(\pi'(s) = \arg\max_a q_\pi(s,a)\) 가 위 조건을 만족함을 보이고, 개선이 멈추면(\(v_{\pi'} = v_\pi\)) π 가 최적임을 설명하라.`, ans: R`\(q_\pi(s, \pi'(s)) = \max_a q_\pi(s,a) \ge q_\pi(s, \pi(s)) = v_\pi(s)\) → 조건 만족.<br>개선이 멈추면 \(v_\pi(s) = \max_a q_\pi(s,a) = \max_a \sum_{s',r} p(s',r \mid s,a)[r + \gamma v_\pi(s')]\) → 벨만 최적 방정식을 만족 → \(v_\pi = v_*\), π 는 최적.`, rubric: '조건 만족 4점, 벨만 최적 방정식 연결 4점' }
+        ] }
+    ] }
+  ] },
+
+  { id: 3, name: '모의고사 3회 (종합)', sections: [
+    { ...OX, items: [
+      { q: 'In-place DP 는 한 sweep 안에서 이미 갱신된 상태의 값을 바로 다음 상태 갱신에 사용한다.', a: true, ex: '배열 하나만 쓰므로 메모리가 적고 보통 더 빨리 수렴. (04장 In-place DP)' },
+      { q: 'MC 추정은 편향이 없지만 분산이 크고, TD 추정은 약간의 편향이 있지만 분산이 작다.', a: true, ex: 'MC 타깃 \\(G_t\\) 는 비편향·고분산, TD 타깃 \\(R + \\gamma V(S\')\\) 는 편향·저분산. (06장)' },
+      { q: 'SARSA 의 업데이트에 쓰이는 A\' 은 \\(\\max_a Q(S\', a)\\) 를 주는 행동이다.', a: false, ex: 'SARSA 의 A\' 은 현재 정책(ε-greedy)으로 <b>실제로 고른</b> 다음 행동. max 를 쓰는 것은 Q-learning. (06장)' },
+      { q: '상태가치함수 \\(v_*\\) 만 알면 환경 모델 없이도 최적 행동을 고를 수 있다.', a: false, ex: R`\(v_*\) 로 행동을 고르려면 \(\sum_{s'} p(s' \mid s,a)[r + \gamma v_*(s')]\) 를 계산해야 하므로 <b>모델이 필요</b>. \(q_*\) 를 알면 \(\arg\max_a q_*(s,a)\) 로 모델 없이 가능 → 그래서 MC·TD 제어는 Q 를 추정. (05장 왜 Q 함수를 추정하나)` },
+      { q: 'Robbins-Monro 조건 \\(\\sum_t \\alpha_t = \\infty\\), \\(\\sum_t \\alpha_t^2 < \\infty\\) 를 만족하는 스텝 크기의 예로 \\(\\alpha_t = 1/t\\) 가 있다.', a: true, ex: R`\(\sum 1/t = \infty\), \(\sum 1/t^2 = \pi^2/6 < \infty\). 상수 α 는 두 번째 조건을 만족하지 않음. (06장)` }
+    ] },
+    { ...MC, items: [
+      { q: '업데이트 타깃과 방법의 연결이 옳은 것을 모두 고르라.', c: [R`\(G_t\) — MC`, R`\(R_{t+1} + \gamma V(S_{t+1})\) — TD(0)`, R`\(R_{t+1} + \gamma \max_a Q(S_{t+1}, a)\) — SARSA`, R`\(\sum_a \pi(a \mid s) \sum_{s'} p(s' \mid s,a)[r + \gamma V(s')]\) — DP 정책 평가`], a: [0, 1, 3], ex: 'max 타깃은 Q-learning. SARSA 는 \\(R + \\gamma Q(S\', A\')\\). (06장 RL 통합 관점)' },
+      { q: R`결정적 정책 \(\pi(s) = a^*\) 를 확률적 정책 표기로 쓰면?`, c: [R`\(\pi(a \mid s) = 1/|\mathcal{A}|\)`, R`\(\pi(a \mid s) = \mathbf{1}(a = a^*)\) (크로네커 델타)`, R`\(\pi(a \mid s) = \varepsilon\)`, R`\(\pi(a \mid s) = q(s,a)\)`], a: [1], ex: 'a = a* 일 때 1, 나머지 0. (03장 결정적 vs 확률적 정책)' },
+      { q: 'ε-soft 정책에 대한 설명으로 옳은 것을 모두 고르라.', c: [R`모든 상태·행동에 대해 \(\pi(a \mid s) \ge \varepsilon/|\mathcal{A}|\)`, 'ε-greedy 정책은 ε-soft 정책이다', 'ε-greedy 정책 개선 정리에 의해, ε-greedy 로 개선한 정책은 원래 ε-greedy 정책보다 나쁘지 않다', 'ε-soft 정책 중 최적인 것은 항상 진짜 최적 정책 π* 와 같다'], a: [0, 1, 2], ex: 'ε-soft 정책들 중의 최적일 뿐, 탐험 때문에 π* 보다는 나쁠 수 있음. (05장)' },
+      { q: '편향-분산 관점에서 n-step TD 의 n 을 키우면?', c: ['편향 ↓, 분산 ↑ (MC 쪽으로)', '편향 ↑, 분산 ↓', '편향·분산 모두 ↓', '변화 없음'], a: [0], ex: '실제 보상을 더 많이 쓰고 부트스트랩 비중이 줄어 MC 에 가까워짐. (06장)' },
+      { q: 'DP 의 3 가지 성질(피보나치 예)로 강의에서 다룬 것과 가장 거리가 먼 것은?', c: ['최적 부분 구조 (optimal substructure)', '중복되는 부분 문제 (overlapping subproblems)', '메모이제이션으로 재계산 방지', '샘플링으로 기댓값을 근사'], a: [3], ex: '샘플링으로 기댓값을 근사하는 것은 MC·TD. DP 는 모델로 기댓값을 정확히 계산 (full backup). (04장)' }
+    ] },
+    { ...SA, items: [
+      { q: 'Q-learning 코드의 빈칸을 채우라 (numpy 사용).' + code('a = epsilon_greedy(Q, s, eps)\ns2, r, done = env.step(a)\ntarget = r if done else r + gamma * ______\nQ[s, a] += alpha * (target - Q[s, a])\ns = s2'), ans: '<code>np.max(Q[s2])</code> (= \\(\\max_{a\'} Q(s\', a\')\\)). SARSA 라면 다음 행동 <code>a2 = epsilon_greedy(Q, s2, eps)</code> 를 먼저 고르고 <code>Q[s2, a2]</code>.' },
+      { q: '정책 이터레이션 알고리즘의 단계를 순서대로 쓰라: (가) 정책 개선 (나) 초기화 (다) 정책이 바뀌지 않으면 종료 (라) 정책 평가', ans: '(나) 초기화 → (라) 정책 평가 → (가) 정책 개선 → (다) 정책이 안정되면 종료, 아니면 (라)로 돌아감' },
+      { q: R`벨만 기대 방정식 (q) 의 빈칸을 채우라: \(q_\pi(s,a) = \sum_{s'} p(s' \mid s,a)\,[\, r + \gamma \;\_\_\_\_\_\_ \,]\)`, ans: R`\(\sum_{a'} \pi(a' \mid s')\, q_\pi(s', a')\) (= \(v_\pi(s')\))` },
+      { q: '아래 복도에서 G 에 들어가면 보상 +10 을 받고 에피소드가 끝나며, 그 외 보상은 0, γ = 0.9, 이동은 결정적(왼쪽/오른쪽)이다. s1 에서 왼쪽은 벽이라 제자리다. \\(v_*(s_1), v_*(s_2), v_*(s_3)\\) 와 \\(q_*(s_1, \\text{left})\\) 를 구하라.' + strip([{ l: 's1' }, { l: 's2' }, { l: 's3' }, { l: 'G', t: 'G', v: '+10' }]), ans: R`\(v_*(s_3) = 10\), \(v_*(s_2) = 0.9\times10 = 9\), \(v_*(s_1) = 0.9\times9 = 8.1\)<br>\(q_*(s_1, \text{left}) = 0 + 0.9\, v_*(s_1) = 7.29\)` },
+      { q: 'MC 에서 비정상(non-stationary) 문제에 대응하기 위해 \\(1/N\\) 대신 상수 α 를 쓰는 이유와, 이때 과거 리턴에 붙는 가중치의 형태를 쓰라.', ans: R`\(V \leftarrow V + \alpha(G - V)\) = 지수이동평균. 최근 리턴에 더 큰 가중치 → 변하는 환경을 따라감. k 번 전 리턴의 가중치는 \(\alpha(1-\alpha)^k\) 로 기하급수적으로 감소. (05장)` }
+    ] },
+    { title: '4. 서술 — DP · MC · TD 비교', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: '퇴근길 운전 예제처럼, 매 순간 “집까지 남은 시간”을 예측하는 문제를 생각하자.',
+        parts: [
+          { p: 8, q: 'DP, MC, TD 를 (1) 모델 필요 여부 (2) 부트스트래핑 (3) 샘플링 (4) 업데이트 시점 기준으로 비교하라.', ans: tbl(['', 'DP', 'MC', 'TD'], [['모델', '필요', '불필요', '불필요'], ['부트스트래핑', 'O', 'X', 'O'], ['샘플링', 'X (full backup)', 'O', 'O'], ['업데이트 시점', 'sweep 마다', '에피소드 끝', '매 스텝']]), rubric: '항목당 2점' },
+          { p: 6, q: '퇴근길 예제에서 TD 가 MC 보다 유리한 점을 설명하라.', ans: '도착을 기다리지 않고, 다음 지점의 예측과 실제로 걸린 시간으로 <b>즉시</b> 예측을 수정할 수 있다 (예: 고속도로가 막히는 걸 보자마자 예측을 늘림). 에피소드가 끝나지 않는 상황에서도 학습 가능하고, 분산이 작아 보통 더 빨리 학습.', rubric: '즉시 갱신 3점, 분산/continuing 3점' },
+          { p: 6, q: 'MC 가 TD 보다 유리한 상황을 한 가지 이상 들라.', ans: '마르코프 성질이 잘 성립하지 않는 환경(부분 관측 등)에서는 부트스트래핑의 편향이 문제 → 실제 리턴을 쓰는 MC 가 더 안정적. 초깃값에 민감하지 않고 비편향 추정.', rubric: '상황 3점, 이유 3점' }
+        ] }
+    ] },
+    { title: '5. 서술 — 축약사상과 수렴', rule: '20점 (부분점수)', type: 'es', items: [
+      { q: R`벨만 최적 연산자 \((Tv)(s) = \max_a \sum_{s'} p(s' \mid s,a)[r + \gamma v(s')]\) 를 생각하자 (γ < 1).`,
+        parts: [
+          { p: 8, q: R`보조정리 \(|\max_a f(a) - \max_a g(a)| \le \max_a |f(a) - g(a)|\) 를 이용해 \(\|Tv - Tu\|_\infty \le \gamma \|v - u\|_\infty\) 를 보여라.`, ans: R`\(|(Tv)(s) - (Tu)(s)| \le \max_a \left|\gamma \sum_{s'} p(s' \mid s,a)(v(s') - u(s'))\right|\)<br>\(\le \gamma \max_a \sum_{s'} p(s' \mid s,a)\,|v(s') - u(s')| \le \gamma \|v - u\|_\infty\) (확률의 합 = 1)<br>모든 s 에 대해 성립 → \(\|Tv - Tu\|_\infty \le \gamma\|v - u\|_\infty\)`, rubric: '보조정리 적용 3점, 확률합 1 이용 3점, sup 로 마무리 2점' },
+          { p: 6, q: '바나흐 고정점 정리로부터 무엇을 결론 내릴 수 있는가? 가치 이터레이션과 연결하라.', ans: R`완비 거리공간에서 축약사상은 <b>유일한 고정점</b>을 가지며, 어떤 초기값에서 시작하든 반복 적용하면 그 고정점으로 수렴.<br>→ 벨만 최적 방정식의 해 \(v_*\) 가 존재하고 유일하며, 가치 이터레이션 \(V_{k+1} = TV_k\) 는 임의의 \(V_0\) 에서 \(v_*\) 로 수렴.`, rubric: '존재·유일 3점, VI 수렴 3점' },
+          { p: 6, q: R`\(\|V_0 - v_*\|_\infty = 100\), γ = 0.9 일 때 오차를 1 이하로 보장하려면 최소 몇 번 반복해야 하는가?`, ans: R`\(\|V_k - v_*\|_\infty \le \gamma^k \|V_0 - v_*\|_\infty = 100\cdot0.9^k \le 1\) → \(k \ge \ln(0.01)/\ln(0.9) \approx 43.7\) → <b>44 번</b>`, rubric: '부등식 3점, 계산 3점' }
+        ] }
+    ] }
+  ] }
+  ];
+})();
+(function () {
+  const SETS = window.RL_MOCK;
+  /* ================= 화면 ================= */
+  const S = { get: k => window.RL_STORE ? window.RL_STORE.get(k) : null, set: (k, v) => window.RL_STORE && window.RL_STORE.set(k, v) };
+  const $ = id => document.getElementById(id);
+  let cur = S.get('mock-set') || 1;
+  let st = {};
+  const key = () => 'mock-' + cur;
+  const save = () => S.set(key(), st);
+  const render = el => window.RL_RENDER_MATH && window.RL_RENDER_MATH(el);
+
+  function drawTabs() {
+    $('setTabs').innerHTML = SETS.map(s => `<button type="button" class="${s.id === cur ? 'on' : ''}" data-s="${s.id}">${s.name}</button>`).join('');
+  }
+  $('setTabs').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; cur = +b.dataset.s; S.set('mock-set', cur); stopTimer(); load(); };
+
+  function load() {
+    st = S.get(key()) || { a: {}, self: {}, graded: false, left: 75 * 60 };
+    drawTabs(); draw(); drawTimer();
+  }
+
+  function draw() {
+    const set = SETS.find(s => s.id === cur);
+    $('exam').innerHTML = set.sections.map((sec, si) => `<section class="card ${st.graded ? 'graded' : ''}" id="sec${si + 1}">
+      <div class="sec-head"><h2>${sec.title}</h2><span class="rule">${sec.rule}</span></div>
+      ${sec.items.map((it, qi) => qHtml(sec, si, it, qi)).join('')}
+    </section>`).join('') + `<section class="card tint result-card" id="resCard" ${st.graded ? '' : 'hidden'}></section>`;
+    $('exam').querySelectorAll('textarea.ans').forEach(t => t.oninput = () => { st.a[t.dataset.k] = t.value; save(); if (st.graded) score(); });
+    render($('exam'));
+    score();
+  }
+
+  function qHtml(sec, si, it, qi) {
+    const k = `${si}-${qi}`, n = `${si + 1}-${qi + 1})`, ans = st.a[k];
+    if (sec.type === 'ox') {
+      const cls = v => { let c = ans === v ? 'sel' : ''; if (st.graded) { if (v === it.a) c += ans === v ? ' right' : ''; if (ans === v && v !== it.a) c += ' wrong'; } return c; };
+      return `<div class="q"><p class="stem"><span class="qn">${n}</span>${it.q} ( )<span class="got" data-got="${k}"></span></p>
+        <div class="row-ox">${[true, false].map(v => `<button type="button" class="${cls(v)}" data-k="${k}" data-v="${v}">${v ? 'O' : 'X'}</button>`).join('')}</div>
+        <div class="key"><span class="k-title">정답 ${it.a ? 'O' : 'X'}</span> — ${it.ex}</div></div>`;
+    }
+    if (sec.type === 'mc') {
+      const sel = new Set(ans || []);
+      const cls = i => { let c = sel.has(i) ? 'sel' : ''; if (st.graded) { const ok = it.a.includes(i); if (ok && sel.has(i)) c += ' right'; else if (!ok && sel.has(i)) c += ' wrong'; else if (ok) c += ' missed'; } return c; };
+      return `<div class="q"><p class="stem"><span class="qn">${n}</span>${it.q} ( )<span class="got" data-got="${k}"></span></p>
+        <div class="mc-grid">${it.c.map((c, i) => `<button type="button" class="mc-opt ${cls(i)}" data-k="${k}" data-i="${i}"><span class="k">${'①②③④⑤'[i]}</span><span>${c}</span></button>`).join('')}</div>
+        <div class="key"><span class="k-title">정답 ${it.a.map(i => '①②③④⑤'[i]).join(', ')}</span> — ${it.ex}</div></div>`;
+    }
+    if (sec.type === 'sa') {
+      const sm = st.self[k];
+      return `<div class="q"><p class="stem"><span class="qn">${n}</span>${it.q}<span class="pts">(${sec.pts}점)</span><span class="got" data-got="${k}"></span></p>
+        <textarea class="ans" data-k="${k}" placeholder="답을 쓰세요" ${st.graded ? 'readonly' : ''}>${esc(ans || '')}</textarea>
+        <div class="key"><span class="k-title">모범답안</span><div>${it.ans}</div>
+          <div class="self">내 답은? ${['right', 'wrong'].map(v => `<button type="button" class="${sm === v ? 'on' : ''}" data-self="${k}" data-v="${v}">${v === 'right' ? `맞았어요 (+${sec.pts})` : `틀렸어요 (−${sec.pen ?? 2})`}</button>`).join('')} <span style="color:var(--muted)">비워 두면 0점</span></div></div></div>`;
+    }
+    // 서술형
+    return `<div class="q"><p class="stem">${it.q}</p>${it.parts.map((p, pi) => {
+      const pk = `${k}-${pi}`, sv = st.self[pk];
+      return `<div class="part"><p class="pq"><span class="qn">${si + 1}-${pi + 1})</span><span class="pts">(${p.p}점)</span> ${p.q}<span class="got" data-got="${pk}"></span></p>
+        <textarea class="ans big" data-k="${pk}" placeholder="풀이와 답을 쓰세요" ${st.graded ? 'readonly' : ''}>${esc(st.a[pk] || '')}</textarea>
+        <div class="key"><span class="k-title">모범답안</span><div>${p.ans}</div><div style="font-size:14px;color:var(--muted);margin-top:6px">채점 기준: ${p.rubric}</div>
+          <div class="self">내 점수 <input type="number" min="0" max="${p.p}" step="1" value="${sv ?? ''}" data-score="${pk}" data-max="${p.p}"> / ${p.p}</div></div></div>`;
+    }).join('')}</div>`;
+  }
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  $('exam').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.self) { st.self[b.dataset.self] = st.self[b.dataset.self] === b.dataset.v ? undefined : b.dataset.v; save(); draw(); return; }
+    if (st.graded) return;
+    const k = b.dataset.k; if (!k) return;
+    if (b.dataset.v != null) { const v = b.dataset.v === 'true'; st.a[k] = st.a[k] === v ? undefined : v; }
+    else if (b.dataset.i != null) { const s = new Set(st.a[k] || []), i = +b.dataset.i; s.has(i) ? s.delete(i) : s.add(i); st.a[k] = [...s].sort(); }
+    save(); draw();
+  });
+  $('exam').addEventListener('input', e => {
+    const t = e.target; if (!t.dataset.score) return;
+    let v = t.value === '' ? undefined : Math.max(0, Math.min(+t.dataset.max, +t.value));
+    st.self[t.dataset.score] = v; save(); score();
+  });
+
+  function score() {
+    const set = SETS.find(s => s.id === cur);
+    let total = 0, auto = 0, pending = 0;
+    const mark = (k, v, txt) => { const el = document.querySelector(`[data-got="${k}"]`); if (!el) return; el.className = 'got ' + (v > 0 ? 'p' : v < 0 ? 'n' : 'z'); el.textContent = st.graded ? (txt ?? ((v > 0 ? '+' : '') + v + '점')) : ''; };
+    set.sections.forEach((sec, si) => sec.items.forEach((it, qi) => {
+      const k = `${si}-${qi}`, ans = st.a[k];
+      if (sec.type === 'ox') { const v = ans == null ? 0 : ans === it.a ? sec.pts : -(sec.pen ?? 2); total += v; mark(k, v); }
+      else if (sec.type === 'mc') { const a = ans || []; const v = !a.length ? 0 : (a.length === it.a.length && a.every(i => it.a.includes(i))) ? sec.pts : -(sec.pen ?? 2); total += v; mark(k, v); }
+      else if (sec.type === 'sa') {
+        const empty = !(ans || '').trim(), sm = st.self[k];
+        const v = empty ? 0 : sm === 'right' ? sec.pts : sm === 'wrong' ? -(sec.pen ?? 2) : 0;
+        if (!empty && !sm) pending++;
+        total += v; mark(k, v, !empty && !sm ? '채점 대기' : undefined);
+      } else it.parts.forEach((p, pi) => { const pk = `${k}-${pi}`, sv = st.self[pk]; if (sv == null) pending++; total += sv || 0; mark(pk, sv || 0, sv == null ? '채점 대기' : `${sv}/${p.p}점`); });
+    }));
+    $('score').textContent = st.graded ? `${total} / 100` : '— / 100';
+    const rc = $('resCard');
+    if (rc && st.graded) rc.innerHTML = `<span class="kicker">${set.name} 결과</span><div class="big">${total}<small style="font-size:24px;color:var(--muted)"> / 100</small></div>
+      <p style="margin:10px 0 0">${pending ? `아직 직접 채점할 문항이 <b>${pending}개</b> 남았어요. 단답식은 “맞았어요/틀렸어요”, 서술형은 점수를 넣어 주세요.` : '채점 완료! 틀린 문제는 관련 장으로 돌아가 다시 보세요.'}</p>`;
+  }
+
+  $('gradeBtn').onclick = () => { st.graded = true; stopTimer(); save(); draw(); $('sec1').scrollIntoView({ behavior: 'smooth' }); };
+  $('resetBtn').onclick = () => { if (!confirm('이 회차의 답안과 채점을 모두 지울까요?')) return; stopTimer(); st = { a: {}, self: {}, graded: false, left: 75 * 60 }; save(); draw(); drawTimer(); };
+
+  /* 타이머 */
+  let tick = null;
+  function drawTimer() { const l = Math.max(0, st.left ?? 4500); $('timer').textContent = `${String(Math.floor(l / 60)).padStart(2, '0')}:${String(l % 60).padStart(2, '0')}`; $('timer').classList.toggle('low', l <= 600); $('timerBtn').textContent = tick ? '일시정지' : (l < 4500 ? '계속' : '시작'); }
+  function stopTimer() { clearInterval(tick); tick = null; drawTimer(); }
+  $('timerBtn').onclick = () => {
+    if (tick) return stopTimer();
+    if (st.graded) return;
+    tick = setInterval(() => { st.left = (st.left ?? 4500) - 1; if (st.left % 10 === 0) save(); if (st.left <= 0) { stopTimer(); alert('시험 시간 종료! 채점하기를 눌러 보세요.'); } drawTimer(); }, 1000);
+    drawTimer();
+  };
+
+  document.addEventListener('DOMContentLoaded', load);
+})();
+</script>
+</body>
+</html>
