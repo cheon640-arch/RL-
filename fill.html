@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공식 빈칸 채우기 — rl notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..700,0..100,0..1&family=Gaegu:wght@400;700&family=Geist:wght@400;500&family=Gowun+Dodum&family=JetBrains+Mono&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="assets/app.js"></script>
+<style>
+  .bank { position: sticky; top: 64px; z-index: 4; background: var(--cream); border: 1.5px solid var(--charcoal); border-radius: 12px; padding: 10px 12px; margin: 6px 0 14px; display: flex; flex-wrap: wrap; gap: 8px; box-shadow: var(--shadow-card); }
+  .bank .lbl { font-family: var(--font-hand); color: var(--sienna); font-size: 19px; width: 100%; margin: -2px 0 0; }
+  .chip-t { border: 1.5px solid var(--charcoal); background: #fff; border-radius: 10px; padding: 4px 10px; cursor: pointer; font-size: 15px; line-height: 1.3; color: var(--cocoa); }
+  .chip-t:hover { transform: translateY(-1px); }
+  .chip-t.sel { background: #fff0e6; border-color: var(--orange); box-shadow: 0 0 0 2px #ffd2b8; }
+  .item { border-top: 1px dashed rgba(23,23,23,.18); padding: 12px 0; }
+  .item:first-of-type { border-top: 0; }
+  .item .t { font-family: var(--font-ui); font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  .item .t b { color: var(--sienna); margin-right: 6px; }
+  .expr { font-size: 18px; line-height: 2.4; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+  .slot { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; min-height: 34px; vertical-align: middle; border: 1.5px dashed var(--sienna); border-radius: 8px; padding: 0 6px; margin: 0 2px; cursor: pointer; background: #fffaf6; color: var(--muted); font-family: var(--font-ui); font-size: 13px; }
+  .slot.filled { border-style: solid; border-color: var(--charcoal); background: #fff; color: var(--cocoa); }
+  .slot.target { box-shadow: 0 0 0 3px #ffd2b8; border-color: var(--orange); }
+  .slot.ok { border-color: #15803d; background: #e8f7ee; }
+  .slot.no { border-color: #dc2626; background: #fdecec; }
+  .fix { font-family: var(--font-ui); font-size: 13px; color: #15803d; margin-top: 2px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .score { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+  .howto { font-size: 15px; }
+</style>
+</head>
+<body data-ch="fill">
+
+<div class="wrap">
+  <div class="hero">
+    <span class="kicker">공식 외우기 1단계 · 보기에서 골라 넣기</span>
+    <h1 class="display">fill the<br>blanks</h1>
+    <p class="lede">장마다 위에 있는 <span class="mk">보기 칩</span>을 누르고, 아래 식의 빈칸을 누르면 들어가요 (빈칸 먼저 눌러도 돼요). 같은 보기를 여러 번 써도 되고, 정답이 아닌 함정 보기도 섞여 있어요. 다 채우면 <b>채점</b>!</p>
+    <div class="meta">2단계는 <a href="worksheet.html">A4 연습지</a>(식 전체 쓰기), 3단계는 <a href="proofs.html">증명 모음</a>.</div>
+    <div data-sticker="star" data-rot="8" style="right:8%;top:70px;width:64px;height:64px"></div>
+    <div data-sticker="heart" data-rot="-10" style="right:19%;top:200px;width:56px;height:52px"></div>
+  </div>
+
+  <div class="page-grid">
+    <aside class="toc"></aside>
+    <main class="lesson" id="main">
+      <section class="card tint" id="total" data-toc="전체 점수">
+        <h2>전체 점수 <span class="ko" id="totalScore">— 채점 전</span></h2>
+        <div class="ctl"><button class="pill small" type="button" id="checkAll">전체 채점</button><button class="pill small" type="button" id="resetAll">전체 다시 하기</button></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  const R = String.raw;
+  /* 식 안의 ▢1, ▢2 … 자리가 빈칸. a = 각 빈칸의 정답 보기. 보기 문자열은 장 안에서 같으면 같은 칩. */
+  const CH = [
+    { id: '02', name: '02 · Finite MDP', extra: [R`p(s' \mid s,a)`, R`\gamma^{k+1}`, R`R_{t+1}`, R`\max_a`, R`\frac{1}{1-\gamma}`, R`S_t = s`], items: [
+      { t: '상태 전이 (4-인자에서)', f: R`p(s'\mid s,a) = \sum_r ▢1`, a: [R`p(s', r \mid s,a)`] },
+      { t: '보상 함수 r(s,a)', f: R`r(s,a) = \mathbb{E}[R_{t+1} \mid S_t=s, A_t=a] = \sum_r r \sum_{s'} ▢1`, a: [R`p(s', r \mid s,a)`] },
+      { t: '보상 함수 r(s,a,s′)', f: R`r(s,a,s') = \sum_r r \cdot ▢1 \,/\, ▢2`, a: [R`p(s', r \mid s,a)`, R`p(s' \mid s,a)`] },
+      { t: 'MDP 전이확률', f: R`\mathcal{P}^a_{ss'} = P[S_{t+1} = s' \mid ▢1]`, a: [R`S_t = s, A_t = a`] },
+      { t: '리턴', f: R`G_t = \sum_{k=0}^{\infty} ▢1\, R_{t+k+1}`, a: [R`\gamma^k`] },
+      { t: '리턴의 상한 (할인의 이유)', f: R`|G_t| \le \sum_k \gamma^k R_{\max} = ▢1`, a: [R`\frac{R_{\max}}{1-\gamma}`] },
+      { t: '상태가치함수', f: R`v_\pi(s) = \mathbb{E}_\pi[\,▢1 \mid S_t = s\,]`, a: [R`G_t`] },
+      { t: '행동가치함수', f: R`q_\pi(s,a) = \mathbb{E}_\pi[\,G_t \mid ▢1\,]`, a: [R`S_t = s, A_t = a`] },
+      { t: 'v 와 q 의 관계', f: R`v_\pi(s) = \sum_{a} ▢1\; q_\pi(s,a)`, a: [R`\pi(a \mid s)`] },
+      { t: '최적 가치함수', f: R`v_*(s) = ▢1\, v_\pi(s)`, a: [R`\max_\pi`] },
+    ] },
+    { id: '03', name: '03 · Bellman Equation', extra: [R`v_\pi(s)`, R`\gamma v_\pi(s)`, R`\max_a q_\pi(s',a)`, R`\mathcal{P}^a_{ss'}`, R`\min_a`, R`\gamma \|v - v'\|_1`], items: [
+      { t: '리턴의 재귀식', f: R`G_t = R_{t+1} + ▢1`, a: [R`\gamma G_{t+1}`] },
+      { t: '벨만 기대 방정식 (v)', f: R`v_\pi(s) = \sum_a \sum_{s'} ▢1\, ▢2\,\big[\,r(s,a,s') + ▢3\,\big]`, a: [R`\pi(a \mid s)`, R`p(s' \mid s,a)`, R`\gamma v_\pi(s')`] },
+      { t: 'chain rule', f: R`p(s', a \mid s) = ▢1\; ▢2`, a: [R`\pi(a \mid s)`, R`p(s' \mid s,a)`] },
+      { t: 'q 를 v 로', f: R`q_\pi(s,a) = \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + ▢1\,\big]`, a: [R`\gamma v_\pi(s')`] },
+      { t: '벨만 기대 방정식 (q)', f: R`q_\pi(s,a) = \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + \gamma\, ▢1\,\big]`, a: [R`\sum_{a'} \pi(a' \mid s')\, q_\pi(s',a')`] },
+      { t: '정책으로 평균낸 전이', f: R`\mathcal{P}^\pi_{ss'} = \sum_a ▢1\; ▢2`, a: [R`\pi(a \mid s)`, R`\mathcal{P}^a_{ss'}`] },
+      { t: '행렬 해', f: R`v_\pi = (I - ▢1)^{-1}\, ▢2`, a: [R`\gamma \mathcal{P}^\pi`, R`\mathcal{R}^\pi`] },
+      { t: 'v* 와 q*', f: R`v_*(s) = ▢1\; q_*(s,a)`, a: [R`\max_a`] },
+      { t: '벨만 최적 방정식 (v*)', f: R`v_*(s) = ▢1 \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + \gamma\, ▢2\,\big]`, a: [R`\max_a`, R`v_*(s')`] },
+      { t: '벨만 최적 방정식 (q*)', f: R`q_*(s,a) = \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + \gamma\, ▢1\,\big]`, a: [R`\max_{a'} q_*(s',a')`] },
+      { t: '벨만 최적 연산자는 축약', f: R`\|Tv - Tv'\|_\infty \le ▢1`, a: [R`\gamma \|v - v'\|_\infty`] },
+      { t: 'max 보조정리', f: R`\big|\max_a f_1(a) - \max_a f_2(a)\big| \le ▢1`, a: [R`\max_a |f_1(a) - f_2(a)|`] },
+    ] },
+    { id: '04', name: '04 · Dynamic Programming', extra: [R`V_{k+1}(s')`, R`\min_a`, R`v_{\pi'}(s)`, R`\pi'(a \mid s)`, R`\gamma^{k}`], items: [
+      { t: '반복적 정책 평가', f: R`V_{k+1}(s) = \sum_a ▢1 \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + \gamma\, ▢2\,\big]`, a: [R`\pi(a \mid s)`, R`V_k(s')`] },
+      { t: 'k-스텝 가치의 뜻', f: R`V_k(s) = \mathbb{E}_\pi\Big[\sum_{i=0}^{k-1} ▢1 \;\Big|\; S_t = s\Big]`, a: [R`\gamma^i R_{t+1+i}`] },
+      { t: 'greedy 정책 개선', f: R`\pi'(s) = ▢1\; q_\pi(s,a)`, a: [R`\arg\max_a`] },
+      { t: '정책 개선 정리', f: R`q_\pi(s, \pi'(s)) \ge ▢1 \;\Longrightarrow\; v_{\pi'}(s) \ge v_\pi(s)`, a: [R`v_\pi(s)`] },
+      { t: '가치 이터레이션', f: R`V_{k+1}(s) = ▢1 \sum_{s'} p(s' \mid s,a)\big[\,r(s,a,s') + \gamma\, ▢2\,\big]`, a: [R`\max_a`, R`V_k(s')`] },
+      { t: '벨만 기대 연산자도 축약', f: R`\|T^\pi v - T^\pi v'\|_\infty \le ▢1`, a: [R`\gamma \|v - v'\|_\infty`] },
+    ] },
+    { id: '05', name: '05 · Monte Carlo', extra: [R`\frac{1}{n-1}`, R`G^{(1)}`, R`\alpha`, R`\varepsilon`, R`0`, R`V(s)`], items: [
+      { t: 'MC 증분 평균', f: R`V_n(s) = V_{n-1}(s) + ▢1\,\big(▢2 - V_{n-1}(s)\big)`, a: [R`\frac{1}{n}`, R`G^{(n)}`] },
+      { t: 'Q 의 증분 업데이트 (방문 횟수)', f: R`Q(S_t,A_t) \leftarrow Q(S_t,A_t) + ▢1\,\big(G_t - Q(S_t,A_t)\big)`, a: [R`\frac{1}{N(S_t,A_t)}`] },
+      { t: '모델 없이 정책 개선', f: R`\mu(s) = \arg\max_a ▢1`, a: [R`Q(s,a)`] },
+      { t: 'ε-greedy (m = 행동 수)', f: R`\pi(a\mid s) = ▢1 + 1 - \varepsilon \ \ (\text{greedy}), \qquad ▢2 \ \ (\text{otherwise})`, a: [R`\frac{\varepsilon}{m}`, R`\frac{\varepsilon}{m}`] },
+      { t: 'GLIE', f: R`\lim_{k\to\infty} N_k(s,a) = ▢1, \qquad \lim_{k\to\infty} \pi_k(a\mid s) = \mathbf{1}\big(a = ▢2\big)`, a: [R`\infty`, R`\arg\max_{a'} Q_k(s,a')`] },
+      { t: '지수이동평균', f: R`Q_n = \alpha\, G^{(n)} + ▢1\; Q_{n-1}`, a: [R`(1-\alpha)`] },
+    ] },
+    { id: '06', name: '06 · Temporal Difference', extra: [R`G_t`, R`Q(S',a)`, R`\lambda^n`, R`\gamma^{n-1} V(S_{t+n})`, R`= \infty`, R`\gamma`], items: [
+      { t: 'TD(0) 업데이트', f: R`V(S_t) \leftarrow V(S_t) + \alpha\big[\,▢1 - V(S_t)\,\big]`, a: [R`R_{t+1} + \gamma V(S_{t+1})`] },
+      { t: 'TD 오차', f: R`\delta_t = ▢1 - V(S_t)`, a: [R`R_{t+1} + \gamma V(S_{t+1})`] },
+      { t: 'SARSA', f: R`Q(S,A) \leftarrow Q(S,A) + \alpha\big[\,R + \gamma\, ▢1 - Q(S,A)\,\big]`, a: [R`Q(S',A')`] },
+      { t: 'Q-learning', f: R`Q(S,A) \leftarrow Q(S,A) + \alpha\big[\,R + \gamma\, ▢1 - Q(S,A)\,\big]`, a: [R`\max_{a'} Q(S',a')`] },
+      { t: 'Robbins-Monro', f: R`\sum_t \alpha_t ▢1, \qquad \sum_t \alpha_t^2 ▢2`, a: [R`= \infty`, R`< \infty`] },
+      { t: 'n-step 리턴', f: R`G_t^{(n)} = R_{t+1} + \gamma R_{t+2} + \cdots + \gamma^{n-1} R_{t+n} + ▢1`, a: [R`\gamma^n V(S_{t+n})`] },
+      { t: 'λ-return', f: R`G_t^\lambda = ▢1 \sum_{n=1}^{\infty} ▢2\; G_t^{(n)}`, a: [R`(1-\lambda)`, R`\lambda^{n-1}`] },
+      { t: 'eligibility trace', f: R`E_t(s) = ▢1\, E_{t-1}(s) + ▢2`, a: [R`\gamma\lambda`, R`\mathbf{1}(S_t = s)`] },
+      { t: 'backward TD(λ)', f: R`V(s) \leftarrow V(s) + \alpha\, ▢1\, E_t(s), \quad \forall s`, a: [R`\delta_t`] },
+      { t: 'λ-error 를 TD error 로', f: R`G_t^\lambda - V(S_t) = \sum_{k=t}^{\infty} ▢1\, \delta_k`, a: [R`(\gamma\lambda)^{k-t}`] },
+    ] },
+  ];
+
+  const S = { get: k => window.RL_STORE ? window.RL_STORE.get(k) : null, set: (k, v) => window.RL_STORE && window.RL_STORE.set(k, v) };
+  const KEY = 'fill-v1';
+  let st, sel = null, target = null;
+  const tex = s => katex.renderToString(s, { throwOnError: false, macros: { '\\E': '\\mathbb{E}' } });
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function bankOf(c) { const u = [...new Set(c.items.flatMap(it => it.a).concat(c.extra))]; return u; }
+
+  function build() {
+    const main = document.getElementById('main');
+    CH.forEach(c => {
+      if (!st.order[c.id]) st.order[c.id] = shuffle(bankOf(c).map((_, i) => i));
+      const bank = bankOf(c);
+      const sec = document.createElement('section');
+      sec.className = 'card'; sec.id = 'f' + c.id; sec.dataset.toc = c.name;
+      sec.innerHTML = `<h2>${c.name} <span class="ko" data-score="${c.id}"></span></h2>
+        <div class="bank" data-bank="${c.id}"><div class="lbl">보기 — 누르고 빈칸에 넣기 (여러 번 사용 가능)</div>${st.order[c.id].map(i => `<button type="button" class="chip-t" data-c="${c.id}" data-tok="${i}">${tex(bank[i])}</button>`).join('')}</div>
+        ${c.items.map((it, k) => {
+          const parts = it.f.split(/▢(\d)/);
+          let h = '';
+          parts.forEach((p, j) => { if (j % 2 === 0) { if (p.trim()) h += tex(p); } else h += `<span class="slot" data-slot="${c.id}-${k}-${+p - 1}" role="button" tabindex="0">빈칸 ${p}</span>`; });
+          return `<div class="item" data-item="${c.id}-${k}"><p class="t"><b>${k + 1}</b>${it.t}</p><div class="expr">${h}</div><div class="fix" hidden></div></div>`;
+        }).join('')}
+        <div class="ctl"><button class="pill small" type="button" data-check="${c.id}">이 장 채점</button><button class="pill small" type="button" data-show="${c.id}">정답 보기</button><button class="pill small" type="button" data-reset="${c.id}">다시 하기</button><button class="pill small" type="button" data-shuf="${c.id}">보기 섞기</button></div>`;
+      main.appendChild(sec);
+    });
+    paint();
+  }
+  function slotTok(c, key) { const v = st.ans[key]; return v == null ? null : bankOf(CH.find(x => x.id === c))[v]; }
+  function paint() {
+    document.querySelectorAll('.slot').forEach(el => {
+      const key = el.dataset.slot, c = key.split('-')[0], tok = slotTok(c, key);
+      el.classList.toggle('filled', tok != null); el.classList.toggle('target', target === key);
+      el.innerHTML = tok != null ? tex(tok) : `빈칸 ${+key.split('-')[2] + 1}`;
+      const g = st.graded[c];
+      el.classList.remove('ok', 'no');
+      if (g) { const [, k, b] = key.split('-').map(Number); const it = CH.find(x => x.id === c).items[k]; el.classList.add(tok === it.a[b] ? 'ok' : 'no'); }
+    });
+    document.querySelectorAll('.chip-t').forEach(el => el.classList.toggle('sel', sel && sel.c === el.dataset.c && sel.i === +el.dataset.tok));
+    document.querySelectorAll('.item').forEach(el => {
+      const [c, k] = el.dataset.item.split('-'); const it = CH.find(x => x.id === c).items[+k]; const fix = el.querySelector('.fix');
+      const wrong = st.graded[c] && it.a.some((a, b) => slotTok(c, `${c}-${k}-${b}`) !== a);
+      if (st.shown[c] || wrong) { fix.hidden = false; fix.innerHTML = '정답: ' + it.a.map((a, b) => `빈칸 ${b + 1} = ${tex(a)}`).join(' · '); } else fix.hidden = true;
+    });
+    let tot = 0, all = 0, any = false;
+    CH.forEach(c => {
+      const n = c.items.reduce((s, it) => s + it.a.length, 0); let ok = 0;
+      c.items.forEach((it, k) => it.a.forEach((a, b) => { if (slotTok(c.id, `${c.id}-${k}-${b}`) === a) ok++; }));
+      const el = document.querySelector(`[data-score="${c.id}"]`);
+      el.textContent = st.graded[c.id] ? `${ok} / ${n}` : '';
+      if (st.graded[c.id]) { tot += ok; all += n; any = true; }
+    });
+    document.getElementById('totalScore').textContent = any ? `${tot} / ${all} (${Math.round(tot / all * 100)}%)` : '— 채점 전';
+  }
+  function place(key, c, i) { st.ans[key] = i; st.graded[c] = false; target = null; S.set(KEY, st); paint(); }
+  document.addEventListener('click', e => {
+    const chip = e.target.closest('.chip-t'), slot = e.target.closest('.slot'), btn = e.target.closest('button[data-check],button[data-show],button[data-reset],button[data-shuf]');
+    if (chip) {
+      const c = chip.dataset.c, i = +chip.dataset.tok;
+      if (target && target.startsWith(c + '-')) { place(target, c, i); sel = null; paint(); return; }
+      sel = sel && sel.c === c && sel.i === i ? null : { c, i }; paint(); return;
+    }
+    if (slot) {
+      const key = slot.dataset.slot, c = key.split('-')[0];
+      if (sel && sel.c === c) { place(key, c, sel.i); return; }
+      if (st.ans[key] != null) { delete st.ans[key]; st.graded[c] = false; S.set(KEY, st); target = null; paint(); return; }
+      target = target === key ? null : key; paint(); return;
+    }
+    if (btn) {
+      const d = btn.dataset;
+      if (d.check) { st.graded[d.check] = true; }
+      if (d.show) { st.shown[d.show] = !st.shown[d.show]; btn.textContent = st.shown[d.show] ? '정답 숨기기' : '정답 보기'; }
+      if (d.reset) { Object.keys(st.ans).filter(k => k.startsWith(d.reset + '-')).forEach(k => delete st.ans[k]); st.graded[d.reset] = false; st.shown[d.reset] = false; }
+      if (d.shuf) { const sec = document.getElementById('f' + d.shuf); const c = CH.find(x => x.id === d.shuf); const bank = bankOf(c); st.order[d.shuf] = shuffle(bank.map((_, i) => i)); sec.querySelector('.bank').querySelectorAll('.chip-t').forEach(x => x.remove()); sec.querySelector('.bank').insertAdjacentHTML('beforeend', st.order[d.shuf].map(i => `<button type="button" class="chip-t" data-c="${d.shuf}" data-tok="${i}">${tex(bank[i])}</button>`).join('')); }
+      S.set(KEY, st); paint(); return;
+    }
+  });
+  document.getElementById('checkAll').onclick = () => { CH.forEach(c => st.graded[c.id] = true); S.set(KEY, st); paint(); };
+  document.getElementById('resetAll').onclick = () => { if (!confirm('모든 장의 답을 지울까요?')) return; st = { ans: {}, graded: {}, shown: {}, order: st.order }; S.set(KEY, st); paint(); };
+  document.addEventListener('DOMContentLoaded', () => {
+    st = S.get(KEY) || { ans: {}, graded: {}, shown: {}, order: {} };
+    st.graded = st.graded || {}; st.shown = st.shown || {}; st.order = st.order || {};
+    build(); S.set(KEY, st);
+  });
+})();
+</script>
+</body>
+</html>
