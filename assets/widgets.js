@@ -237,6 +237,109 @@
     reset();
   };
 
+  /* ---------- ch04: 정책 평가 · 정책 이터레이션 · 가치 이터레이션 · GPI 한 화면 비교 ---------- */
+  W.dpcompare = (root) => {
+    root.innerHTML = `<div class="w-title">직접 비교: 세 가지 DP + GPI (FrozenLake 4×4, γ = 0.9, 목표 보상 10)</div>
+      <div class="controls" style="flex-wrap:wrap">
+        <button class="pill small" data-m="eval">반복적 정책 평가</button>
+        <button class="pill small" data-m="pi">정책 이터레이션</button>
+        <button class="pill small" data-m="vi">가치 이터레이션</button>
+        <button class="pill small" data-m="gpi">GPI: 평가 m번만</button>
+        <label class="mwrap" style="font-family:var(--font-ui);font-size:14px">m = <select class="m"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="0">∞ (끝까지)</option></select></label>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div class="gw grid" style="grid-template-columns:repeat(4,auto)"></div>
+        <div style="flex:1;min-width:200px;font-family:var(--font-ui);font-size:14px;line-height:1.9">
+          <div>지금 단계: <b class="ph"></b></div>
+          <div>평가 sweep 누적: <b class="sw" style="font-family:var(--font-mono)"></b></div>
+          <div>정책 개선 횟수: <b class="imp" style="font-family:var(--font-mono)"></b></div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="pill small step">한 단계</button><button class="pill small play">자동 재생</button><button class="pill small end">끝까지</button><button class="pill small reset">처음부터</button>
+          </div>
+        </div>
+      </div>
+      <div class="readout"></div>`;
+    const N = 16, gamma = 0.9, EPS = 1e-4, $ = c => root.querySelector(c);
+    const qsa = (V, s, a) => { const [j, r] = FL.step(s, a); return r + gamma * V[j]; };
+    let mode = 'eval', V, pi, st, timer = null;
+    const greedyOne = s => { let b = 0, bv = -Infinity; for (let a = 0; a < 4; a++) { const v = qsa(V, s, a); if (v > bv + 1e-9) { bv = v; b = a; } } return b; };
+    const argAll = s => { const q = [0, 1, 2, 3].map(a => qsa(V, s, a)), m = Math.max(...q); return [0, 1, 2, 3].filter(a => Math.abs(q[a] - m) < 1e-9); };
+    function sweepEval() {
+      const nv = V.map((_, s) => FL.terminal(s) ? 0 : pi[s] === null ? [0, 1, 2, 3].reduce((acc, a) => acc + 0.25 * qsa(V, s, a), 0) : qsa(V, s, pi[s]));
+      const d = Math.max(...nv.map((x, i) => Math.abs(x - V[i]))); V = nv; st.sw++; st.k++; return d;
+    }
+    function sweepVI() {
+      const nv = V.map((_, s) => FL.terminal(s) ? 0 : Math.max(...[0, 1, 2, 3].map(a => qsa(V, s, a))));
+      const d = Math.max(...nv.map((x, i) => Math.abs(x - V[i]))); V = nv; st.sw++; return d;
+    }
+    const intro = {
+      eval: '무작위 정책(상하좌우 각 1/4)을 평가만 해요. 정책은 끝까지 그대로, 숫자만 vπ 로 수렴 → “예측”.',
+      pi: '무작위 정책에서 시작. ① 지금 정책을 수렴할 때까지 평가 → ② greedy 개선 → 정책이 안 바뀔 때까지 반복.',
+      vi: '정책 없이 V₀ = 0 에서 시작. 매 sweep 마다 각 칸에서 max 를 취해요 (평가 1번 + 개선을 한 줄로). 정책은 마지막에 한 번만 뽑아요.',
+      gpi: 'GPI = 평가 ↔ 개선을 번갈아 하는 틀. 평가를 m 번만 하고 바로 개선해요. m = ∞ 면 정책 이터레이션, m = 1 이면 가치 이터레이션과 같은 결과가 나와요.',
+    };
+    function reset() { V = Array(N).fill(0); pi = Array(N).fill(null); st = { phase: mode === 'vi' ? 'vi' : 'eval', sw: 0, imp: 0, k: 0, round: 1, done: false }; stop(); draw(intro[mode]); }
+    const mVal = () => +$('.m').value;
+    function improve() {
+      const np = [...Array(N)].map((_, s) => FL.terminal(s) ? null : greedyOne(s));
+      const same = pi.every((a, s) => a === np[s]); pi = np; st.imp++; return same;
+    }
+    function step() {
+      if (st.done) return;
+      if (mode === 'eval') {
+        const d = sweepEval();
+        if (d < EPS) { st.done = true; st.phase = '수렴'; draw(`sweep ${st.sw}: 변화가 거의 없음 → 수렴. 이 숫자가 무작위 정책의 vπ. 정책(무작위)은 한 번도 안 바뀌었어요.`); }
+        else draw(`sweep ${st.sw}: V_{k+1}(s) = Σ_a π(a|s)[r + γV_k(s′)] 를 모든 칸에 적용 (최대 변화 ${d.toFixed(3)})`);
+        return;
+      }
+      if (mode === 'vi') {
+        if (st.phase === 'vi') { const d = sweepVI(); if (d < EPS) { st.phase = 'extract'; draw(`sweep ${st.sw}: 수렴 → V ≈ v*. 다음 단계에서 정책을 딱 한 번 뽑아요.`); } else draw(`sweep ${st.sw}: V_{k+1}(s) = max_a [r + γV_k(s′)]. 흐린 화살표는 참고용 — 아직 정책을 들고 있지 않아요. (최대 변화 ${d.toFixed(3)})`); return; }
+        improve(); st.done = true; st.phase = '최적'; draw(`수렴한 V* 에서 greedy 로 정책을 한 번 뽑음 → π*. 평가 sweep 총 ${st.sw}번, 정책 뽑기 1번.`); return;
+      }
+      // pi, gpi
+      const m = mode === 'pi' ? 0 : mVal();
+      if (st.phase === 'eval') {
+        const d = sweepEval();
+        const enough = d < EPS || (m > 0 && st.k >= m);
+        if (enough) { st.phase = 'improve'; draw(m > 0 && d >= EPS ? `평가 ${st.round}회차: ${m}번만 하고 끊음 (아직 vπ 아님!). 다음 단계에서 이 덜 된 V 로 개선해요.` : `평가 ${st.round}회차 수렴 (누적 sweep ${st.sw}). 지금 V = 현재 정책의 vπ. 다음 단계에서 greedy 개선.`); }
+        else draw(`평가 ${st.round}회차 sweep ${st.k}${m ? ` / ${m}` : ''}: 정책은 고정, V 만 갱신 (최대 변화 ${d.toFixed(3)})`);
+        return;
+      }
+      const same = improve();
+      if (same && st.lastStableV != null && Math.max(...V.map((x, i) => Math.abs(x - st.lastStableV[i]))) < EPS) { st.done = true; st.phase = '최적'; draw(`개선해도 정책이 안 바뀌고 V 도 안정 → 최적 정책 π*. 평가 sweep 총 ${st.sw}번, 개선 ${st.imp}번.`); return; }
+      if (same && (mode === 'pi' || m === 0)) { st.done = true; st.phase = '최적'; draw(`개선해도 정책이 안 바뀜 → 정책 안정 = 최적 정책 π*. 평가 sweep 총 ${st.sw}번, 개선 ${st.imp}번.`); return; }
+      st.lastStableV = same ? V.slice() : null;
+      st.phase = 'eval'; st.round++; st.k = 0;
+      draw(`개선 ${st.imp}: 각 칸에서 argmax_a [r + γV(s′)] 로 정책을 바꿈. 이제 새 정책을 다시 평가${m ? ` (${m}번만)` : ' (끝까지)'}.`);
+    }
+    function draw(msg) {
+      const fade = mode === 'vi' && st.phase === 'vi';
+      $('.grid').innerHTML = V.map((v, s) => {
+        const t = FL.type(s), cls = ['cell', t === 'H' ? 'hole' : '', t === 'G' ? 'goal' : '', t === 'S' ? 'start' : ''].join(' ');
+        if (t === 'H' || t === 'G') return `<div class="${cls}"><span class="idx">${s}</span>${t}</div>`;
+        let arr;
+        if (mode === 'eval' || pi[s] === null) arr = fade && st.sw ? argAll(s).map(a => FL.acts[a][2]).join('') : '<span style="font-size:11px;color:var(--muted)">무작위</span>';
+        else arr = FL.acts[pi[s]][2];
+        if (mode === 'vi' && !st.sw) arr = '';
+        const bg = `background:rgba(255,111,30,${Math.min(0.35, v / 10 * 0.35).toFixed(3)})`;
+        return `<div class="${cls}" style="${bg}"><span class="idx">${s}</span><span class="arrow" style="${fade ? 'opacity:.4' : ''}">${arr}</span><span style="font-size:13px">${f2(v)}</span></div>`;
+      }).join('');
+      $('.ph').textContent = ({ eval: mode === 'eval' ? '평가' : `평가 (${st.round}회차)`, improve: '개선 대기', vi: 'max 갱신', extract: '정책 뽑기 대기', 수렴: '수렴', 최적: '최적 정책' })[st.phase];
+      $('.sw').textContent = st.sw; $('.imp').textContent = st.imp;
+      root.querySelectorAll('[data-m]').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === mode));
+      $('.mwrap').style.display = mode === 'gpi' ? '' : 'none';
+      $('.readout').textContent = msg || '';
+    }
+    function stop() { clearInterval(timer); timer = null; $('.play').textContent = '자동 재생'; }
+    root.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; reset(); });
+    $('.m').onchange = reset;
+    $('.step').onclick = () => { stop(); step(); };
+    $('.end').onclick = () => { stop(); for (let i = 0; i < 3000 && !st.done; i++) step(); };
+    $('.reset').onclick = reset;
+    $('.play').onclick = () => { if (timer) return stop(); $('.play').textContent = '멈춤'; timer = setInterval(() => { if (st.done) return stop(); step(); }, 420); };
+    reset();
+  };
+
   /* ---------- ch05: ε-greedy ---------- */
   W.egreedy = (root) => {
     root.innerHTML = `<div class="w-title">직접 해보기: ε-greedy 정책의 행동 확률</div>

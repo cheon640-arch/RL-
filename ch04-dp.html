@@ -376,6 +376,21 @@ pi = {s: argmax_a(...) <span class="k">for</span> s <span class="k">in</span> S}
 <div data-anim="vi"></div>
 </section>
 
+<section class="card tint" id="dp-compare" data-toc="한눈에 비교: PE · PI · VI · GPI">
+  <h2>한눈에 비교 <span class="ko">정책 평가 · 정책 이터레이션 · 가치 이터레이션 · GPI</span></h2>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th></th><th>무엇을 구하나</th><th>평가를 몇 번?</th><th>개선은?</th><th>정책을 들고 다님?</th></tr></thead>
+    <tbody>
+      <tr><td>반복적 정책 평가</td><td>\(v_\pi\) (예측)</td><td>수렴할 때까지</td><td>안 함</td><td>고정된 정책 하나</td></tr>
+      <tr><td>정책 이터레이션</td><td>\(v_*, \pi_*\) (제어)</td><td>매번 수렴할 때까지</td><td>평가가 끝나면 greedy</td><td>O</td></tr>
+      <tr><td>가치 이터레이션</td><td>\(v_*, \pi_*\) (제어)</td><td>1번 (max 에 섞임)</td><td>매 sweep 마다 max 로 바로</td><td>X (마지막에 한 번 뽑음)</td></tr>
+      <tr><td>GPI</td><td>둘을 포함하는 <b>틀</b></td><td>상관없음 (m 번)</td><td>평가와 번갈아</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><span class="hand">이렇게 눌러 보세요</span>① “반복적 정책 평가”는 화살표가 끝까지 <b>무작위</b> 그대로 (숫자만 변함). ② “정책 이터레이션”은 평가 sweep 이 쭉 쌓이다가 개선 한 번에 화살표가 확 바뀜. ③ “가치 이터레이션”은 정책 없이 max 만 반복하고 마지막에 한 번 정책을 뽑음. ④ “GPI”에서 m 을 ∞ → 3 → 1 로 바꾸며 “끝까지”를 눌러 보면, m = ∞ 는 정책 이터레이션과 똑같고, m = 1 은 가치 이터레이션과 같은 최적 정책에 거의 같은 sweep 수로 도달해요. m 이 작을수록 sweep 은 적고 개선 횟수는 많아요.</div>
+  <div data-widget="dpcompare"></div>
+</section>
+
 <h2 class="part-title"><small>part 5</small>asynchronous dp</h2>
 
 <section class="card" id="async" data-toc="비동기 DP">
