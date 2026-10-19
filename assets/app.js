@@ -40,7 +40,8 @@
       `<a href="summary.html" class="extra ${current === 'sum' ? 'active' : ''}">한눈에 요약</a>` +
       `<a href="compare.html" class="extra ${current === 'cmp' ? 'active' : ''}">한눈에 비교</a>` +
       `<a href="quiz.html" class="extra ${current === 'quiz' ? 'active' : ''}">퀴즈</a>` +
-      `<a href="mock.html" class="extra ${current === 'mock' ? 'active' : ''}">모의고사</a>`;
+      `<a href="mock.html" class="extra ${current === 'mock' ? 'active' : ''}">모의고사</a>` +
+      `<a href="proofs.html" class="extra ${current === 'proof' ? 'active' : ''}">증명 모음</a>`;
     return `<header class="site-header">
       <a class="brand" href="index.html" aria-label="홈">${HAND}<span>rl notebook</span></a>
       <nav class="chapter-tabs">${tabs}</nav>
