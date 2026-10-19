@@ -624,7 +624,8 @@
         el.q = {};
         el.path = mk(svg, 'polyline', { points: `${cx(1)},${cy(1)}`, fill: 'none', stroke: C.orange, 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-opacity': .7 });
         el.agent = mk(svg, 'circle', { cx: cx(1), cy: cy(1), r: 13, fill: C.orange, stroke: C.char, 'stroke-width': 1.5 });
-        mk(svg, 'text', { x: 310, y: 30, fill: C.sienna, 'font-family': 'Gaegu', 'font-size': 21 }, '메모리 (S, A, R)');
+        mk(svg, 'text', { x: 310, y: 30, fill: C.sienna, 'font-family': 'Gaegu', 'font-size': 21 }, '메모리 (Sₜ, Aₜ, Rₜ₊₁)');
+        mk(svg, 'text', { x: 470, y: 30, fill: C.sienna, 'font-family': 'Gaegu', 'font-size': 21 }, '리턴 Gₜ');
         el.rows = ep.map((e, i) => mk(svg, 'text', { x: 310, y: 62 + i * 30, fill: C.ink, 'font-size': 14, 'font-family': 'JetBrains Mono', opacity: 0 }, `t=${i}  (${e[0]}, ${e[1]}, ${e[2]})`));
         el.gs = ep.map((e, i) => mk(svg, 'text', { x: 470, y: 62 + i * 30, fill: C.sienna, 'font-size': 14, 'font-family': 'JetBrains Mono' }, ''));
         t = 0; phase = 'fwd'; G = 0;
@@ -635,8 +636,11 @@
           const [s, a, r] = ep[t]; const s2 = states[t + 1];
           ctl.cap(`<b>t = ${t}</b>: S=${s}, A=${a}, R=${r} → 메모리에 <b>저장만</b> 해요. MC 는 아직 아무것도 업데이트 못 해요 (리턴을 모르니까).`);
           el.rows[t].setAttribute('opacity', 1);
-          await tween(600, u => { el.agent.setAttribute('cx', lerp(cx(s), cx(s2), u)); el.agent.setAttribute('cy', lerp(cy(s), cy(s2), u)); }, ctl);
-          el.path.setAttribute('points', el.path.getAttribute('points') + ` ${cx(s2)},${cy(s2)}`);
+          // 같은 칸을 다시 지나면 선을 살짝 아래로 어긋나게 그려서 왕복(7 ↔ 8)이 보이게
+          const off = i => states.slice(0, i).filter(x => x === states[i]).length * 10;
+          const y1 = cy(s) + off(t), y2 = cy(s2) + off(t + 1);
+          await tween(600, u => { el.agent.setAttribute('cx', lerp(cx(s), cx(s2), u)); el.agent.setAttribute('cy', lerp(y1, y2, u)); }, ctl);
+          el.path.setAttribute('points', el.path.getAttribute('points') + ` ${cx(s2)},${y2}`);
           t++;
           if (t === ep.length) { phase = 'end'; }
           return true;
@@ -651,9 +655,9 @@
           const prev = G; G = r + 0.9 * G;
           el.cells[s].style.fill = '#ffd9c2';
           setTimeout(() => { el.cells[s].style.fill = C.cream; }, 500 / ctl.speed);
-          el.gs[t].textContent = `G=${fmt(G)}`;
+          el.gs[t].textContent = `G${SUB(t)} = ${fmt(G)}`;
           const firstIdx = ep.findIndex(e => e[0] === s && e[1] === a);
-          ctl.cap(`G${SUB(t)} = R + 0.9 × G${SUB(t + 1)} = ${r} + 0.9 × ${fmt(prev)} = <b>${fmt(G)}</b>` + (firstIdx !== t ? `<br>(${s},${a}) 는 t=${firstIdx} 에도 나와요 → first-visit MC 는 나중에 t=${firstIdx} 의 값으로 덮어써요.` : ''));
+          ctl.cap(`G${SUB(t)} = R${SUB(t + 1)} + 0.9 × G${SUB(t + 1)} = ${r} + 0.9 × ${fmt(prev)} = <b>${fmt(G)}</b>` + (firstIdx !== t ? `<br>(${s},${a}) 는 t=${firstIdx} 에도 나와요 → first-visit MC 는 나중에 t=${firstIdx} 의 값으로 덮어써요.` : ''));
           if (firstIdx !== t) el.gs[t].setAttribute('opacity', .4);
           t--;
           if (t < 0) phase = 'upd';
